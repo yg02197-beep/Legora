@@ -23,4 +23,6 @@ Repository에서 필요한 근거만 조사해 Behavior Slice를 만들고, 사�
 
 ## 상태
 
-설계 단계입니다.
+Repository Knowledge Integration R1이 구현되어 있습니다. 질문을 Repository Knowledge에서 선택하고, 현재 ACTIVE evidence의 freshness를 확인한 뒤 LEGORA-owned Behavior Slice로 투영하는 native Entry/CLI 경로가 동작합니다.
+
+Cartographer 지원은 Repository Knowledge로 가져오기 위한 legacy import compatibility 경계로만 유지합니다.

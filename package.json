@@ -2,6 +2,9 @@
   "name": "legora",
   "private": true,
   "type": "module",
+  "bin": {
+    "legora": "./src/cli/bin.mjs"
+  },
   "scripts": {
     "test": "node --import tsx --test tests/unit/**/*.test.ts",
     "test:integration:cartographer-real": "node --import tsx --test tests/integration/providers/cartographer/real-model.test.ts",
