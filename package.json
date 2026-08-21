@@ -1,0 +1,16 @@
+{
+  "name": "legora",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test tests/unit/**/*.test.ts",
+    "test:integration:cartographer-real": "node --import tsx --test tests/integration/providers/cartographer/real-model.test.ts",
+    "test:integration:causal-real": "node --import tsx --test tests/integration/core/causal-real-model.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}

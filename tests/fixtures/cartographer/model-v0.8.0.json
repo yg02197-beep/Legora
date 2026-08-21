@@ -1,0 +1,244 @@
+{
+  "id": "model:fixture",
+  "rootPath": "D:/Projects/Fixture",
+  "extraTopLevel": "ignored-but-diagnosed",
+  "entities": [
+    {
+      "id": "actor:request",
+      "kind": "actor",
+      "name": "request",
+      "description": "An expired request",
+      "evidence": [
+        {
+          "id": "ev:actor",
+          "confidence": "proven",
+          "provenance": "deterministic",
+          "anchors": [
+            { "filePath": "src/refresh.ts", "lineStart": 1, "lineEnd": 3 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "state:expired",
+      "kind": "state",
+      "name": "expired",
+      "description": "Token is expired",
+      "evidence": [
+        {
+          "id": "ev:state",
+          "confidence": "high",
+          "provenance": "deterministic",
+          "anchors": [
+            { "filePath": "src/refresh.ts", "lineStart": 5 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "event:arrives",
+      "kind": "event",
+      "name": "request arrives",
+      "description": "Expired request arrives",
+      "evidence": [
+        {
+          "id": "ev:event",
+          "confidence": "future-confidence",
+          "provenance": "agent",
+          "anchors": [
+            { "filePath": "src/refresh.ts", "lineStart": 8 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "capability:refresh",
+      "kind": "capability",
+      "name": "refresh",
+      "description": "Refreshes the token",
+      "evidence": [
+        {
+          "id": "ev:cap",
+          "confidence": "proven",
+          "provenance": "deterministic",
+          "anchors": [
+            { "filePath": "src/refresh.ts", "lineStart": 10, "lineEnd": 20 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "invariant:confirmed-only",
+      "kind": "invariant",
+      "name": "confirmed only",
+      "description": "Executable behavior requires confirmed evidence",
+      "evidence": [
+        {
+          "id": "ev:inv",
+          "confidence": "proven",
+          "provenance": "deterministic",
+          "anchors": [
+            { "filePath": "src/projection.ts", "lineStart": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "side-effect:asset",
+      "kind": "side-effect",
+      "name": "asset write",
+      "description": "Understanding asset files are written",
+      "evidence": [
+        {
+          "id": "ev:effect",
+          "confidence": "proven",
+          "provenance": "deterministic",
+          "anchors": [
+            { "filePath": "src/asset.ts", "lineStart": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "failure-point:unsupported",
+      "kind": "failure-point",
+      "name": "unsupported input",
+      "description": "Unsupported input is refused",
+      "evidence": [
+        {
+          "id": "ev:fail",
+          "confidence": "proven",
+          "provenance": "deterministic",
+          "anchors": [
+            { "filePath": "src/projection.ts", "lineStart": 30 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "entity:unanchored",
+      "kind": "entity",
+      "name": "unanchored",
+      "description": "Proven provider claim without a valid line anchor",
+      "evidence": [
+        {
+          "id": "ev:no-anchor",
+          "confidence": "proven",
+          "provenance": "agent",
+          "anchors": [
+            { "filePath": "src/unknown.ts" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "entity:two-hop",
+      "kind": "side-effect",
+      "name": "two hop effect",
+      "description": "Must not be imported through recursive traversal",
+      "evidence": [
+        {
+          "id": "ev:two-hop",
+          "confidence": "proven",
+          "provenance": "deterministic",
+          "anchors": [
+            { "filePath": "src/two-hop.ts", "lineStart": 1 }
+          ]
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "invariant:confirmed-only>guards>capability:refresh",
+      "kind": "guards",
+      "source": "invariant:confirmed-only",
+      "target": "capability:refresh",
+      "description": "Confirmed evidence guards projection",
+      "evidence": [
+        {
+          "id": "ev:guards",
+          "confidence": "proven",
+          "provenance": "deterministic",
+          "anchors": [
+            { "filePath": "src/projection.ts", "lineStart": 4 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "capability:refresh>triggers>side-effect:asset",
+      "kind": "triggers",
+      "source": "capability:refresh",
+      "target": "side-effect:asset",
+      "description": "Refresh path can write an understanding asset",
+      "evidence": [
+        {
+          "id": "ev:triggers-effect",
+          "confidence": "proven",
+          "provenance": "deterministic",
+          "anchors": [
+            { "filePath": "src/asset.ts", "lineStart": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "capability:refresh>triggers>failure-point:unsupported",
+      "kind": "triggers",
+      "source": "capability:refresh",
+      "target": "failure-point:unsupported",
+      "description": "Unsupported scenario can fail closed",
+      "evidence": [
+        {
+          "id": "ev:triggers-failure",
+          "confidence": "proven",
+          "provenance": "deterministic",
+          "anchors": [
+            { "filePath": "src/projection.ts", "lineStart": 29 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "side-effect:asset>triggers>entity:two-hop",
+      "kind": "triggers",
+      "source": "side-effect:asset",
+      "target": "entity:two-hop",
+      "description": "Second hop must stay out",
+      "evidence": []
+    },
+    {
+      "id": "actor:request>contains>entity:unanchored",
+      "kind": "contains",
+      "source": "actor:request",
+      "target": "entity:unanchored",
+      "description": "Unrelated relationship kind",
+      "evidence": []
+    }
+  ],
+  "slices": [
+    {
+      "id": "slice:main",
+      "name": "Main flow",
+      "description": "Main fixture flow",
+      "kind": "flow",
+      "steps": [
+        { "entityId": "actor:request", "label": "Expired request arrives" },
+        { "entityId": "state:expired", "label": "Token is expired" },
+        { "entityId": "event:arrives", "label": "Request arrival is observed" },
+        { "entityId": "capability:refresh", "label": "Refresh token" }
+      ],
+      "evidence": [
+        {
+          "id": "ev:slice",
+          "confidence": "proven",
+          "provenance": "deterministic",
+          "anchors": [
+            { "filePath": "tests/refresh.test.ts", "lineStart": 1, "lineEnd": 8 }
+          ]
+        }
+      ]
+    }
+  ]
+}
