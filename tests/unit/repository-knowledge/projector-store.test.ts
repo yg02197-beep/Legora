@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
+import path from "node:path";
 import { writeKnowledgeRecord } from "../../../src/repository-knowledge/store.ts";
 import { projectRepositoryKnowledgeBehaviorSlice } from "../../../src/repository-knowledge/projector.ts";
 import type { KnowledgeRecord } from "../../../src/repository-knowledge/contracts.ts";
@@ -20,7 +21,7 @@ function record(id: string, value: Partial<KnowledgeRecord>): KnowledgeRecord {
 }
 
 test("repository-level projector reads persisted knowledge without a provider model", async () => {
-  const repositoryRoot = await fs.mkdtemp(`${os.tmpdir()}\\legora-projector-store-`);
+  const repositoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "legora-projector-store-"));
   const entity = record("entity:route", {
     subject: "routeRequest",
     structure: { type: "ENTITY", entityKind: "capability", name: "routeRequest" },

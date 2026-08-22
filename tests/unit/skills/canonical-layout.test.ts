@@ -16,7 +16,7 @@ async function exists(filePath: string): Promise<boolean> {
 }
 
 test("canonical Legora Skill has required Agent Skills metadata and references", async () => {
-  const skill = await fs.readFile(path.join(canonicalRoot, "SKILL.md"), "utf8");
+  const skill = (await fs.readFile(path.join(canonicalRoot, "SKILL.md"), "utf8")).replace(/\r\n?/g, "\n");
 
   assert.match(skill, /^---\n[\s\S]*?\n---\n/);
   assert.match(skill, /\nname:\s*legora\s*\n/);
