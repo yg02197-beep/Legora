@@ -1,40 +1,292 @@
 # Legora
 
-Legora는 실제 코드 근거를 바탕으로 사람이 복잡한 소프트웨어의 동작을 이해하고, 예측하고, 판단하도록 돕는 Human Understanding 시스템입니다.
+**Evidence-grounded code understanding for humans and coding agents — Explain, Explore, Verify.**
 
-## 핵심 구조
+Legora helps a person understand what a codebase actually does without asking an
+agent to invent a mental model from prose alone. It turns repository evidence
+into fresh Repository Knowledge, projects a bounded Behavior Slice, and then
+uses the smallest useful understanding intervention: Explain, Explore, or
+Verify.
 
 ```text
-Understanding Router
-├─ Explain
-├─ Explore
-└─ Verify
+Repository Evidence
+        ↓
+Repository Knowledge
+        ↓
+freshness validation
+        ↓
+Behavior Slice
+        ↓
+Explain / Explore / Verify
 ```
 
-Repository에서 필요한 근거만 조사해 Behavior Slice를 만들고, 사용자의 현재 이해에 충분한 가장 작은 개입을 선택합니다. Microworld는 인과관계를 직접 조작하고 관찰해야 할 때만 사용하는 Explore 수단입니다.
+## Why Legora?
 
-## MVP 원칙
+Coding agents are good at reading code, but a useful explanation still needs
+three guarantees:
 
-- Human Understanding을 최상위 목적으로 둡니다.
-- 설명과 실행 모델은 실제 코드 근거에 연결합니다.
-- 가장 작은 충분한 개입을 선택합니다.
-- 하나의 Microworld는 하나의 인과관계만 다룹니다.
-- 근거가 부족하면 더 단순하고 안전한 설명으로 전환합니다.
+1. **Grounding** — claims should trace back to repository evidence.
+2. **Freshness** — cached knowledge should not silently survive source changes.
+3. **Boundaries** — the system should say when it does not know instead of
+   fabricating a plausible answer.
 
-## 상태
+Legora makes those guarantees part of the runtime rather than relying only on
+prompt instructions.
 
-Repository Knowledge Native Acquisition R2가 구현되어 있습니다. coding agent는 `legora knowledge acquire`에 proposal JSON을 전달할 수 있고, Legora는 구조를 검증한 뒤 실제 repository source에서 evidence를 직접 캡처해 ACTIVE/HISTORY Knowledge를 원자적으로 저장합니다.
+## Current status
 
-Entry는 질문에 필요한 Knowledge가 없으면 `ACQUIRE_KNOWLEDGE`, 선택된 Knowledge가 stale/unknown이면 `REFRESH_KNOWLEDGE`를 반환하며, 검증된 현재 Knowledge가 있을 때만 LEGORA-owned Behavior Slice를 제공합니다.
+Legora is an early public `v0.1.0` source release.
 
-Standalone External Repository Validation R4를 통과했습니다. production package는 plain Node.js `dist` CLI로 실행되며 대상 repository에 Legora, `tsx`, TypeScript를 설치하지 않고도 acquire/READY/stale/refresh lifecycle, repository isolation, fail-closed 경계가 검증되었습니다. 실제 repository를 사용한 단일 coding-agent pilot에서도 Entry-first orchestration과 evidence-bounded Explain이 확인되었습니다. 이 결과는 multi-agent 호환성이나 remote repository 지원을 의미하지 않습니다.
+| Surface | Status |
+| --- | --- |
+| Standalone CLI / external repository lifecycle (R4) | Validated |
+| Codex CLI portable Skill workflow | Live validated |
+| Claude Code bootstrap / doctor | Implemented; live gate not yet run |
+| Gemini CLI bootstrap / doctor | Implemented; live gate not yet run |
+| Remote repository support | Not currently claimed |
+| Multi-agent support | Not currently claimed |
 
-R5의 portable Agent Skill과 user-scope bootstrap/doctor deterministic 경계가 구현되어 있습니다. canonical Skill은 `skills/legora/` 하나이며 `legora bootstrap`은 Codex/Gemini 공유 `$HOME/.agents/skills/legora`와 Claude Code `$HOME/.claude/skills/legora`에 Legora-managed copy만 설치·갱신합니다. `legora doctor`는 read-only 진단만 수행합니다. Codex CLI 0.147.0에서는 explicit `$legora`와 자연어 implicit trigger 모두 실제 `Entry → acquire → READY → grounded answer` workflow가 관찰되어 Gate C가 PASS했습니다. Claude Code와 Gemini CLI live gate는 아직 실행하지 않았으므로 전체 R5는 `R5_NOT_COMPLETE` 상태입니다.
+The npm package is **not published** yet. `package.json` remains private, so the
+supported installation path for now is from source.
 
-Cartographer 지원은 Repository Knowledge로 가져오기 위한 legacy import compatibility 경계로만 유지합니다.
+## Requirements
 
-## Coding-agent usage
+- Node.js **22 or newer**
+- npm
+- Git
+- A local repository you want to understand
+- Optional: Codex CLI, Claude Code, or Gemini CLI for portable Agent Skill use
 
-The canonical orchestration surface is `skills/legora/SKILL.md`. A coding agent starts a repository-understanding question with `legora entry <question>`, follows any acquire/refresh handshake until Entry is `READY`, then uses the colocated `references/explain.md`, `references/explore.md`, or `references/verify.md` for the smallest useful Explain / Explore / Verify intervention. The repository-root `SKILL.md` is only a compatibility pointer.
+## Install from source
 
-The public Skill is provider-neutral. Repository truth, evidence capture, freshness, and Behavior Slice ownership remain enforced by the Legora runtime rather than by prose in the Skill.
+```powershell
+git clone https://github.com/yg02197-beep/Legora.git
+cd Legora
+npm ci
+npm run build
+npm link
+```
+
+Confirm the CLI is available:
+
+```powershell
+legora
+```
+
+The command intentionally returns usage information when called without a
+subcommand.
+
+## Coding-agent setup
+
+Legora ships one canonical portable Agent Skill at `skills/legora/`. The
+bootstrap command installs a Legora-managed copy into the supported user-scope
+location for the selected coding agent.
+
+### Codex CLI
+
+```powershell
+legora bootstrap --agent codex
+legora doctor --agent codex
+```
+
+Codex is the currently live-validated integration.
+
+### Claude Code
+
+```powershell
+legora bootstrap --agent claude
+legora doctor --agent claude
+```
+
+Bootstrap and Doctor are implemented, but the live workflow gate has not yet
+been run.
+
+### Gemini CLI
+
+```powershell
+legora bootstrap --agent gemini
+legora doctor --agent gemini
+```
+
+Bootstrap and Doctor are implemented, but the live workflow gate has not yet
+been run.
+
+`legora doctor` is read-only. Bootstrap only manages targets owned by Legora
+and refuses to overwrite unowned or locally modified Skill content.
+
+## 30-second first use
+
+From the repository you want to understand, start with an actual question:
+
+```powershell
+legora entry "Where is authentication enforced and what happens when it fails?"
+```
+
+Entry is a gate, not an answer generator. Its lifecycle is:
+
+```text
+KNOWLEDGE_NOT_FOUND
+        ↓
+ACQUIRE_KNOWLEDGE
+        ↓
+coding agent proposes repository locators
+        ↓
+Legora captures source evidence itself
+        ↓
+READY
+```
+
+If selected knowledge already exists but its active evidence changed or cannot
+be checked:
+
+```text
+KNOWLEDGE_STALE / KNOWLEDGE_UNKNOWN
+        ↓
+REFRESH_KNOWLEDGE
+        ↓
+READY
+```
+
+Only `READY` allows Legora-grounded Behavior Slice output.
+
+When used through the portable Skill, the coding agent follows this handshake
+for you: it starts with Entry, supplies acquisition or refresh proposals when
+requested, and does not treat a pre-READY guess as an authoritative Legora
+answer.
+
+## Explain / Explore / Verify
+
+Legora routes understanding work into three capabilities:
+
+- **Explain** builds the smallest useful mental model from confirmed or bounded
+  evidence.
+- **Explore** uses grounded cases to inspect behavior. Microworld is an Explore
+  capability, not the default answer format.
+- **Verify** asks for observable evidence that the mental model transfers to a
+  prediction or related case. It does not claim permanent mastery.
+
+The canonical behavior instructions live in:
+
+```text
+skills/legora/SKILL.md
+skills/legora/references/explain.md
+skills/legora/references/explore.md
+skills/legora/references/verify.md
+```
+
+The repository-root `SKILL.md` is a compatibility pointer, not a second source
+of workflow truth.
+
+## Repository Knowledge
+
+Legora stores repository-local knowledge in:
+
+```text
+.legora/repository-knowledge.json
+```
+
+Repository Knowledge separates active evidence from historical evidence
+revisions. Freshness checks read the active evidence and fail closed when
+source material is removed, changed, or cannot be verified.
+
+A coding agent may propose *where* evidence should be captured, but Legora
+validates the proposal and captures the source snippet itself. Authoritative
+evidence fields are not accepted merely because an agent wrote them.
+
+### Version-control policy for `.legora`
+
+`.legora/repository-knowledge.json` can contain source-derived evidence
+snippets.
+
+Recommended default:
+
+- keep `.legora` local while experimenting or working with private code;
+- inspect its contents before every commit;
+- never copy a `.legora` generated from a private codebase into a public
+  repository;
+- commit Repository Knowledge only when the team intentionally wants it to be
+  a reviewed, shared knowledge asset.
+
+Legora does not force a global ignore rule because intentional team-owned
+Knowledge assets are a supported repository policy choice.
+
+## Evidence boundary
+
+Evidence capture rejects absolute locators and verifies repository containment
+twice:
+
+```text
+relative locator
+        ↓
+lexical repository containment
+        ↓
+realpath resolution
+        ↓
+realpath containment re-check
+```
+
+That second containment check prevents a repository-local symlink or junction
+from being used to read evidence outside the target repository.
+
+The same fail-closed principle applies to freshness checks and Repository
+Knowledge projection.
+
+## Portable Agent Skill
+
+Bootstrap uses a managed-copy transaction rather than blindly copying files.
+The boundary includes:
+
+- ownership manifests;
+- SHA-256 payload verification;
+- refusal to adopt unowned lookalike content;
+- refusal to overwrite locally modified managed content;
+- staged publication;
+- backup and validation;
+- rollback on failure.
+
+Codex and Gemini use the shared Agent Skills user scope. Claude Code uses its
+own user-scope Skill location. Run `doctor` to inspect the installation without
+changing it.
+
+## Cartographer
+
+Legora was informed by
+[`miltonian/cartographer`](https://github.com/miltonian/cartographer), an
+MIT-licensed behavior-first code understanding project.
+
+Legora is an independent implementation. Cartographer is **not** a runtime
+dependency. The remaining Cartographer-facing code is a legacy import
+compatibility boundary that can project an existing compatible model into
+Legora-owned evidence and Behavior Slice structures.
+
+See `THIRD_PARTY_NOTICES.md` and the design reference registry under
+`docs/references/` for attribution and additional references.
+
+## Development and tests
+
+Install dependencies:
+
+```powershell
+npm ci
+```
+
+Run the public CI-equivalent verification:
+
+```powershell
+npm run typecheck
+npm test
+npm run build
+npm run test:integration:r4
+npm run test:integration:r5
+```
+
+Additional repository-specific integration and live-provider scripts exist for
+development, but live provider gates are intentionally excluded from default
+CI.
+
+## License
+
+Legora is released under the MIT License. See `LICENSE`.
+
+Third-party projects and references remain under their respective licenses.
+See `THIRD_PARTY_NOTICES.md`.
