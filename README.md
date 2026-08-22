@@ -43,6 +43,7 @@ Legora is an early public `v0.1.0` source release.
 | Codex CLI portable Skill workflow | Live validated |
 | Claude Code bootstrap / doctor | Implemented; live gate not yet run |
 | Gemini CLI bootstrap / doctor | Implemented; live gate not yet run |
+| OpenCode bootstrap / doctor | Implemented; live gate not yet run |
 | Remote repository support | Not currently claimed |
 | Multi-agent support | Not currently claimed |
 
@@ -55,7 +56,7 @@ supported installation path for now is from source.
 - npm
 - Git
 - A local repository you want to understand
-- Optional: Codex CLI, Claude Code, or Gemini CLI for portable Agent Skill use
+- Optional: Codex CLI, Claude Code, Gemini CLI, or OpenCode for portable Agent Skill use
 
 ## Install from source
 
@@ -111,6 +112,17 @@ legora doctor --agent gemini
 Bootstrap and Doctor are implemented, but the live workflow gate has not yet
 been run.
 
+### OpenCode
+
+```powershell
+legora bootstrap --agent opencode
+legora doctor --agent opencode
+```
+
+OpenCode shares the portable `~/.agents/skills/legora` target with Codex and
+Gemini. Bootstrap and Doctor are implemented, but the live workflow gate has
+not yet been run.
+
 `legora doctor` is read-only. Bootstrap only manages targets owned by Legora
 and refuses to overwrite unowned or locally modified Skill content.
 
@@ -125,16 +137,40 @@ legora entry "Where is authentication enforced and what happens when it fails?"
 Entry is a gate, not an answer generator. Its lifecycle is:
 
 ```text
-KNOWLEDGE_NOT_FOUND
-        ↓
-ACQUIRE_KNOWLEDGE
-        ↓
-coding agent proposes repository locators
-        ↓
-Legora captures source evidence itself
-        ↓
-READY
+question
+  ↓
+lexical + structural + terminology-normalized retrieval
+  ↓
+strong existing match ───────────────→ freshness check → READY
+  ↓ no strong match
+KNOWLEDGE_CANDIDATES
+  ↓
+agent reviews returned knowledge metadata only
+  ├─ candidate covers question
+  │    ↓
+  │  legora entry --candidate <record-id> <question>
+  │    ↓
+  │  freshness check → READY
+  │
+  └─ no candidate covers question
+       ↓
+     legora entry --reject-candidates <question>
+       ↓
+     KNOWLEDGE_NOT_FOUND
+       ↓
+     ACQUIRE_KNOWLEDGE
+       ↓
+     coding agent inspects only the required repository region
+       ↓
+     Legora captures source evidence itself → READY
 ```
+
+Candidate output includes the record identity, subject, structure, match
+confidence, and matched concepts. If lexical or terminology-normalized search
+has zero overlap but Repository Knowledge already contains behavior flows,
+Entry returns those flow metadata as recovery candidates instead of declaring
+knowledge missing immediately. This keeps repository Grep/Read and acquisition
+behind the candidate-recovery gate.
 
 If selected knowledge already exists but its active evidence changed or cannot
 be checked:
@@ -150,9 +186,9 @@ READY
 Only `READY` allows Legora-grounded Behavior Slice output.
 
 When used through the portable Skill, the coding agent follows this handshake
-for you: it starts with Entry, supplies acquisition or refresh proposals when
-requested, and does not treat a pre-READY guess as an authoritative Legora
-answer.
+for you: it starts with Entry, reviews existing knowledge before repository
+source, supplies acquisition or refresh proposals only when requested, and does
+not treat a pre-READY guess as an authoritative Legora answer.
 
 ## Explain / Explore / Verify
 
@@ -192,6 +228,20 @@ source material is removed, changed, or cannot be verified.
 A coding agent may propose *where* evidence should be captured, but Legora
 validates the proposal and captures the source snippet itself. Authoritative
 evidence fields are not accepted merely because an agent wrote them.
+
+The normal agent-facing acquisition input is intentionally smaller than the
+stored Knowledge Record contract. Agents submit `entity`, `flow`, or
+`relationship` plus a subject, human-readable participants, and source
+locators; Legora creates internal IDs, kinds, and structure fields itself.
+
+```powershell
+legora knowledge acquire --example
+```
+
+The legacy full proposal JSON remains accepted for compatibility. Before any
+new record is published, Legora checks existing Knowledge both before evidence
+capture and again inside the atomic store transaction. A likely duplicate
+returns `EXISTING_KNOWLEDGE` instead of writing another record.
 
 ### Version-control policy for `.legora`
 

@@ -9,7 +9,7 @@ import type {
   SupportedAgent,
 } from "./contracts.ts";
 
-const AGENTS: readonly SupportedAgent[] = ["codex", "claude", "gemini"];
+const AGENTS: readonly SupportedAgent[] = ["codex", "gemini", "opencode", "claude"];
 
 function envValue(env: NodeJS.ProcessEnv, key: string): string | undefined {
   const exact = env[key];
@@ -87,7 +87,8 @@ export function resolveBootstrapTargets(
   const targets: BootstrapTarget[] = [];
 
   const sharedAgents = AGENTS.filter(
-    (agent): agent is "codex" | "gemini" => (agent === "codex" || agent === "gemini") && requested.has(agent),
+    (agent): agent is "codex" | "gemini" | "opencode" =>
+      (agent === "codex" || agent === "gemini" || agent === "opencode") && requested.has(agent),
   );
   if (sharedAgents.length > 0) {
     targets.push({
@@ -110,6 +111,8 @@ export function resolveBootstrapTargets(
 export function parseSupportedAgent(value: string): SupportedAgent | "all" | null {
   const normalized = value.trim().toLowerCase();
   if (normalized === "all") return "all";
-  if (normalized === "codex" || normalized === "claude" || normalized === "gemini") return normalized;
+  if (normalized === "codex" || normalized === "claude" || normalized === "gemini" || normalized === "opencode") {
+    return normalized;
+  }
   return null;
 }

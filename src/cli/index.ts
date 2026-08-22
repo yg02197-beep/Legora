@@ -12,6 +12,11 @@ import type { KnowledgeAcquisitionProposal } from "../repository-knowledge/acqui
 import { acquireRepositoryKnowledge } from "../repository-knowledge/acquisition-service.ts";
 import { checkKnowledgeRecordFreshness } from "../repository-knowledge/freshness.ts";
 import { queryKnowledgeRecords } from "../repository-knowledge/query.ts";
+import {
+  acquireSimpleRepositoryKnowledge,
+  parseSimpleKnowledgeAcquisitionJson,
+  SIMPLE_ACQUISITION_EXAMPLES,
+} from "../repository-knowledge/simple-acquisition.ts";
 import { readKnowledgeRecords } from "../repository-knowledge/store.ts";
 import { resolveLegoraPackageRoot } from "../skills/canonical.ts";
 import { renderBootstrapResult, renderDoctorResult } from "./render.ts";
@@ -24,11 +29,14 @@ export interface CliCommandResult {
 
 const USAGE = [
   "legora entry <question>",
-  "legora knowledge acquire < proposal.json",
+  "legora entry --candidate <record-id> <question>",
+  "legora entry --reject-candidates <question>",
+  "legora knowledge acquire < acquisition.json",
+  "legora knowledge acquire --example",
   "legora knowledge query <question>",
   "legora knowledge status",
-  "legora bootstrap [--agent codex|claude|gemini|all] [--dry-run] [--json]",
-  "legora doctor [--agent codex|claude|gemini] [--json]",
+  "legora bootstrap [--agent codex|claude|gemini|opencode|all] [--dry-run] [--json]",
+  "legora doctor [--agent codex|claude|gemini|opencode] [--json]",
 ].join("\n");
 
 export interface CliCommandInput {
@@ -48,6 +56,12 @@ interface ParsedBootstrapOptions {
 interface ParsedDoctorOptions {
   requested: readonly SupportedAgent[] | "all";
   json: boolean;
+}
+
+interface ParsedEntryOptions {
+  question: string;
+  candidateRecordId?: string;
+  candidatesRejected?: boolean;
 }
 
 function defaultHost(): HostEnvironment {
@@ -92,7 +106,7 @@ function parseBootstrapOptions(argv: readonly string[]): ParsedBootstrapOptions 
     requested: agent === null
       ? "detected"
       : agent === "all"
-        ? ["codex", "gemini", "claude"]
+        ? ["codex", "gemini", "opencode", "claude"]
         : [agent],
     dryRun,
     json,
@@ -120,6 +134,36 @@ function parseDoctorOptions(argv: readonly string[]): ParsedDoctorOptions | null
     return null;
   }
   return { requested: agent === null ? "all" : [agent], json };
+}
+
+function parseEntryOptions(argv: readonly string[]): ParsedEntryOptions | null {
+  let candidateRecordId: string | undefined;
+  let candidatesRejected = false;
+  const questionParts: string[] = [];
+  for (let index = 1; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (token === "--candidate") {
+      if (candidateRecordId !== undefined || candidatesRejected || index + 1 >= argv.length) return null;
+      const value = argv[index + 1]?.trim();
+      if (!value) return null;
+      candidateRecordId = value;
+      index += 1;
+      continue;
+    }
+    if (token === "--reject-candidates") {
+      if (candidatesRejected || candidateRecordId !== undefined) return null;
+      candidatesRejected = true;
+      continue;
+    }
+    questionParts.push(token);
+  }
+  const question = questionParts.join(" ").trim();
+  if (!question) return null;
+  return {
+    question,
+    ...(candidateRecordId === undefined ? {} : { candidateRecordId }),
+    ...(candidatesRejected ? { candidatesRejected: true } : {}),
+  };
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -202,6 +246,7 @@ function statusExitCode(status: string): number {
   if (status === "STALE" || status === "KNOWLEDGE_STALE") return 4;
   if (status === "UNKNOWN" || status === "KNOWLEDGE_UNKNOWN") return 5;
   if (status === "EMPTY" || status === "KNOWLEDGE_NOT_FOUND") return 3;
+  if (status === "KNOWLEDGE_CANDIDATES") return 8;
   return 0;
 }
 
@@ -244,21 +289,41 @@ export async function runCliCommand(
   }
 
   if (argv[0] === "entry") {
-    const question = argv.slice(1).join(" ").trim();
-    if (!question) return usageError("entry requires a question.");
-    const result = await runLegoraEntry({ repositoryRoot, question });
+    const options = parseEntryOptions(argv);
+    if (!options) return usageError("entry requires a question and at most one --candidate <record-id>.");
+    const result = await runLegoraEntry({ repositoryRoot, ...options });
     return {
       exitCode: statusExitCode(result.status),
       data: { command: "entry", ...result },
     };
   }
 
+  if (argv[0] === "knowledge" && argv[1] === "acquire" && argv[2] === "--example" && argv.length === 3) {
+    return {
+      exitCode: 0,
+      data: {
+        command: "knowledge acquire --example",
+        status: "EXAMPLE",
+        examples: SIMPLE_ACQUISITION_EXAMPLES,
+      },
+    };
+  }
+
   if (argv[0] === "knowledge" && argv[1] === "acquire" && argv.length === 2) {
     const proposal = parseAcquisitionProposal(input.stdin);
-    if (!proposal) return usageError("knowledge acquire requires one valid proposal JSON document on stdin.");
-    const result = await acquireRepositoryKnowledge({ repositoryRoot, proposal });
+    const simpleInput = proposal ? null : parseSimpleKnowledgeAcquisitionJson(input.stdin);
+    if (!proposal && !simpleInput) {
+      return usageError("knowledge acquire requires one valid simple acquisition or proposal JSON document on stdin.");
+    }
+    const result = proposal
+      ? await acquireRepositoryKnowledge({ repositoryRoot, proposal })
+      : await acquireSimpleRepositoryKnowledge({ repositoryRoot, input: simpleInput! });
     return {
-      exitCode: result.status === "ACQUIRED" ? 0 : 6,
+      exitCode: result.status === "ACQUIRED"
+        ? 0
+        : result.status === "EXISTING_KNOWLEDGE"
+          ? 8
+          : 6,
       data: { command: "knowledge acquire", ...result },
     };
   }

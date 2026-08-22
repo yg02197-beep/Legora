@@ -14,6 +14,8 @@ test("canonical SKILL.md encodes the R2 Entry-first acquire-refresh handshake", 
 
   assert.match(skill, /legora entry/i);
   assert.match(skill, /KNOWLEDGE_NOT_FOUND/);
+  assert.match(skill, /KNOWLEDGE_CANDIDATES/);
+  assert.match(skill, /REVIEW_KNOWLEDGE_CANDIDATES/);
   assert.match(skill, /ACQUIRE_KNOWLEDGE/);
   assert.match(skill, /KNOWLEDGE_STALE/);
   assert.match(skill, /KNOWLEDGE_UNKNOWN/);
@@ -21,6 +23,22 @@ test("canonical SKILL.md encodes the R2 Entry-first acquire-refresh handshake", 
   assert.match(skill, /legora knowledge acquire/i);
   assert.match(skill, /READY/);
   assert.match(skill, /entry.*again|re-run.*entry|rerun.*entry/i);
+  assert.match(skill, /candidate.*before.*repository|before.*repository.*candidate/i);
+  assert.match(skill, /--candidate/);
+  assert.match(skill, /--reject-candidates/);
+  assert.match(skill, /candidate.*metadata|metadata.*candidate/i);
+  assert.match(skill, /knowledge acquire --example/i);
+  assert.match(skill, /simple acquisition/i);
+  assert.match(skill, /without.*internal.*id|do not.*internal.*id/i);
+  assert.match(skill, /EXISTING_KNOWLEDGE/);
+});
+
+test("canonical Skill description advertises Entry-first repository understanding before direct source search", async () => {
+  const skill = await read("skills/legora/SKILL.md");
+
+  assert.match(skill, /description:.*Legora.*first/i);
+  assert.match(skill, /description:.*repository-understanding/i);
+  assert.match(skill, /description:.*Entry.*before.*Grep\/Read/i);
 });
 
 test("canonical SKILL.md gates authoritative capability output on READY", async () => {

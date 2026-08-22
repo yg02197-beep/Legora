@@ -28,7 +28,7 @@ export interface BootstrapResult {
   message?: string;
 }
 
-const CANONICAL_AGENT_ORDER: readonly SupportedAgent[] = ["codex", "gemini", "claude"];
+const CANONICAL_AGENT_ORDER: readonly SupportedAgent[] = ["codex", "gemini", "opencode", "claude"];
 
 function uniqueCanonicalAgents(agents: readonly SupportedAgent[]): SupportedAgent[] {
   const requested = new Set(agents);

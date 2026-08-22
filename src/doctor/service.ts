@@ -13,7 +13,7 @@ import type {
   LocalCommandRunner,
 } from "./contracts.ts";
 
-const AGENT_ORDER: readonly SupportedAgent[] = ["codex", "gemini", "claude"];
+const AGENT_ORDER: readonly SupportedAgent[] = ["codex", "gemini", "opencode", "claude"];
 const GEMINI_TIMEOUT_MS = 10_000;
 
 function defaultLocalCommandRunner(

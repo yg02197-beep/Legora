@@ -15,14 +15,14 @@ function host(homeDir: string, platform: NodeJS.Platform, env: NodeJS.ProcessEnv
   return { homeDir, platform, env };
 }
 
-test("Codex and Gemini share one portable physical target", () => {
+test("Codex, Gemini, and OpenCode share one portable physical target", () => {
   const homeDir = path.resolve("D:/users/tester");
-  const targets = resolveBootstrapTargets(homeDir, ["codex", "gemini"]);
+  const targets = resolveBootstrapTargets(homeDir, ["codex", "gemini", "opencode"]);
 
   assert.equal(targets.length, 1);
   assert.equal(targets[0].kind, "agents-shared");
   assert.equal(targets[0].path, path.join(homeDir, ".agents", "skills", "legora"));
-  assert.deepEqual(targets[0].agents, ["codex", "gemini"]);
+  assert.deepEqual(targets[0].agents, ["codex", "gemini", "opencode"]);
 });
 
 test("Claude uses its own user-scope physical target", () => {
@@ -36,13 +36,13 @@ test("Claude uses its own user-scope physical target", () => {
   }]);
 });
 
-test("all three agents resolve to exactly two deterministic physical targets", () => {
+test("all four agents resolve to exactly two deterministic physical targets", () => {
   const homeDir = path.resolve("D:/users/tester");
-  const targets = resolveBootstrapTargets(homeDir, ["gemini", "claude", "codex", "gemini"]);
+  const targets = resolveBootstrapTargets(homeDir, ["gemini", "opencode", "claude", "codex", "gemini"]);
 
   assert.equal(targets.length, 2);
   assert.deepEqual(targets.map((target) => target.kind), ["agents-shared", "claude"]);
-  assert.deepEqual(targets[0].agents, ["codex", "gemini"]);
+  assert.deepEqual(targets[0].agents, ["codex", "gemini", "opencode"]);
   assert.deepEqual(targets[1].agents, ["claude"]);
 });
 
@@ -54,6 +54,7 @@ test("supported-agent parser accepts canonical names and all only", () => {
   assert.equal(parseSupportedAgent("codex"), "codex");
   assert.equal(parseSupportedAgent("CLAUDE"), "claude");
   assert.equal(parseSupportedAgent("Gemini"), "gemini");
+  assert.equal(parseSupportedAgent("OpenCode"), "opencode");
   assert.equal(parseSupportedAgent("all"), "all");
   assert.equal(parseSupportedAgent("cursor"), null);
 });
@@ -63,6 +64,7 @@ test("Windows PATH detection finds command shims without spawning agents", async
   try {
     await fs.writeFile(path.join(temp, "codex.cmd"), "@echo off\r\n");
     await fs.writeFile(path.join(temp, "claude.cmd"), "@echo off\r\n");
+    await fs.writeFile(path.join(temp, "opencode.cmd"), "@echo off\r\n");
     const result = await detectSupportedAgents(host("C:\\Users\\tester", "win32", {
       Path: temp,
       PATHEXT: ".COM;.EXE;.BAT;.CMD",
@@ -71,6 +73,7 @@ test("Windows PATH detection finds command shims without spawning agents", async
     assert.equal(result.find((entry) => entry.agent === "codex")?.executable, path.join(temp, "codex.cmd"));
     assert.equal(result.find((entry) => entry.agent === "claude")?.executable, path.join(temp, "claude.cmd"));
     assert.equal(result.find((entry) => entry.agent === "gemini")?.executable, null);
+    assert.equal(result.find((entry) => entry.agent === "opencode")?.executable, path.join(temp, "opencode.cmd"));
   } finally {
     await fs.rm(temp, { recursive: true, force: true });
   }

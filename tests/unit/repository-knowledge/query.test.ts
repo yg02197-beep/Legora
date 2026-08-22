@@ -41,6 +41,20 @@ test("query ranks records with more matching question tokens first", () => {
   assert.deepEqual(result.map((item) => item.id), ["request-routing", "request-flow"]);
 });
 
+test("query searches structural names, descriptions, and flow step labels", () => {
+  const flow = record("native:flow:downloads", "behavior-flow:routing", "Download routing");
+  flow.structure = {
+    type: "BEHAVIOR_FLOW",
+    flowKind: "routing",
+    name: "Download routing",
+    steps: [{ entityId: "native:entity:direct", label: "Direct attempt terminal failure" }],
+  };
+
+  const result = queryKnowledgeRecords([flow], "When does the Direct attempt terminate?");
+
+  assert.deepEqual(result.map((item) => item.id), ["native:flow:downloads"]);
+});
+
 test("query does not use evidence snapshots or history as search text", () => {
   const evidenceOnly = record("unrelated", "entity", "Unrelated subject");
   evidenceOnly.activeEvidence = [{

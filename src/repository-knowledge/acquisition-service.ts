@@ -6,20 +6,41 @@ import {
 } from "./acquisition-validator.ts";
 import { captureEvidence } from "./evidence-capture.ts";
 import type { KnowledgeEvidenceAnchor, KnowledgeRecord } from "./contracts.ts";
+import {
+  findKnowledgeDuplicates,
+  type DuplicateKnowledgeMatch,
+} from "./duplicate-detector.ts";
 import { readKnowledgeRecords, transactKnowledgeRecordsAtomic } from "./store.ts";
 
 export type NativeAcquisitionCode =
   | "ACQUIRED"
+  | "EXISTING_KNOWLEDGE_CANDIDATE"
   | "STRUCTURE_INVALID"
   | "EVIDENCE_CAPTURE_FAILED";
 
 export interface NativeAcquisitionResult {
-  status: "ACQUIRED" | "REJECTED";
+  status: "ACQUIRED" | "EXISTING_KNOWLEDGE" | "REJECTED";
   code: NativeAcquisitionCode;
   recordIds: string[];
+  existingRecordIds?: string[];
+  duplicateMatches?: DuplicateKnowledgeMatch[];
   validation: AcquisitionValidationResult;
   candidateId?: string;
   reason?: string;
+}
+
+function existingKnowledgeResult(
+  validation: AcquisitionValidationResult,
+  duplicateMatches: DuplicateKnowledgeMatch[],
+): NativeAcquisitionResult {
+  return {
+    status: "EXISTING_KNOWLEDGE",
+    code: "EXISTING_KNOWLEDGE_CANDIDATE",
+    recordIds: [],
+    existingRecordIds: [...new Set(duplicateMatches.map((match) => match.existingRecordId))].sort(),
+    duplicateMatches,
+    validation,
+  };
 }
 
 async function captureCandidateEvidence(
@@ -103,6 +124,11 @@ export async function acquireRepositoryKnowledge(input: {
     };
   }
 
+  const duplicateMatches = findKnowledgeDuplicates(input.proposal, existingRecords);
+  if (duplicateMatches.length > 0) {
+    return existingKnowledgeResult(validation, duplicateMatches);
+  }
+
   const captured = await captureCandidateEvidence(input.repositoryRoot, input.proposal);
   if (!captured.ok) {
     return {
@@ -125,6 +151,13 @@ export async function acquireRepositoryKnowledge(input: {
           recordIds: [],
           validation: currentValidation,
         },
+      };
+    }
+
+    const currentDuplicates = findKnowledgeDuplicates(input.proposal, currentRecords);
+    if (currentDuplicates.length > 0) {
+      return {
+        result: existingKnowledgeResult(currentValidation, currentDuplicates),
       };
     }
 

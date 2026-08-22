@@ -97,6 +97,26 @@ test("detected bootstrap targets only agents found on PATH", async () => {
   }
 });
 
+test("detected OpenCode bootstrap uses the shared portable target", async () => {
+  const home = await fs.mkdtemp(path.join(os.tmpdir(), "legora-service-opencode-"));
+  const bin = await makeBin(["opencode"]);
+  try {
+    const result = await bootstrapLegora({
+      requested: "detected",
+      dryRun: false,
+      host: windowsHost(home, bin),
+      packageVersion: "0.1.0",
+    });
+    assert.equal(result.status, "BOOTSTRAP_READY");
+    assert.equal(result.physicalWrites, 1);
+    assert.deepEqual(result.agents.map((entry) => entry.agent), ["opencode"]);
+    assert.equal(result.agents[0]?.targetPath, path.join(home, ".agents", "skills", "legora"));
+  } finally {
+    await fs.rm(home, { recursive: true, force: true });
+    await fs.rm(bin, { recursive: true, force: true });
+  }
+});
+
 test("explicit agent can be pre-provisioned even when executable is absent", async () => {
   const home = await fs.mkdtemp(path.join(os.tmpdir(), "legora-service-explicit-"));
   try {
@@ -122,18 +142,18 @@ test("explicit agent can be pre-provisioned even when executable is absent", asy
   }
 });
 
-test("all three explicit agents perform at most two physical writes", async () => {
+test("all four explicit agents perform at most two physical writes", async () => {
   const home = await fs.mkdtemp(path.join(os.tmpdir(), "legora-service-all-"));
   try {
     const result = await bootstrapLegora({
-      requested: ["gemini", "claude", "codex", "gemini"],
+      requested: ["gemini", "opencode", "claude", "codex", "gemini"],
       dryRun: false,
       host: windowsHost(home),
       packageVersion: "0.1.0",
     });
     assert.equal(result.status, "BOOTSTRAP_READY");
     assert.equal(result.physicalWrites, 2);
-    assert.deepEqual(result.agents.map((entry) => entry.agent), ["codex", "gemini", "claude"]);
+    assert.deepEqual(result.agents.map((entry) => entry.agent), ["codex", "gemini", "opencode", "claude"]);
     assert.equal(await exists(path.join(home, ".agents", "skills", "legora", "SKILL.md")), true);
     assert.equal(await exists(path.join(home, ".claude", "skills", "legora", "SKILL.md")), true);
   } finally {

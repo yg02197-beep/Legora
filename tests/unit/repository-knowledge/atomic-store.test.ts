@@ -59,6 +59,34 @@ test("atomic publication leaves no temporary store file after success", async ()
   assert.deepEqual(entries, ["repository-knowledge.json"]);
 });
 
+test("transient Windows EPERM while acquiring a vanished lock is retried", async () => {
+  const repositoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "legora-atomic-store-eperm-"));
+  const originalOpen = fs.open;
+  let injected = false;
+
+  (fs as any).open = async (...args: Parameters<typeof fs.open>) => {
+    const [filePath, flags] = args;
+    if (!injected
+      && flags === "wx"
+      && String(filePath).endsWith(".repository-knowledge.lock")) {
+      injected = true;
+      const error = new Error("injected transient lock contention") as NodeJS.ErrnoException;
+      error.code = "EPERM";
+      throw error;
+    }
+    return originalOpen(...args);
+  };
+
+  try {
+    await upsertKnowledgeRecordsAtomic(repositoryRoot, [record("after-eperm")]);
+  } finally {
+    (fs as any).open = originalOpen;
+  }
+
+  assert.equal(injected, true);
+  assert.deepEqual((await readKnowledgeRecords(repositoryRoot)).map((item) => item.id), ["after-eperm"]);
+});
+
 test("concurrent atomic upserts preserve records from every writer", async () => {
   const repositoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "legora-atomic-store-concurrent-"));
   const records = Array.from({ length: 12 }, (_, index) => record(`writer-${index}`));

@@ -1,4 +1,4 @@
-export type SupportedAgent = "codex" | "claude" | "gemini";
+export type SupportedAgent = "codex" | "claude" | "gemini" | "opencode";
 export type PhysicalTargetKind = "agents-shared" | "claude";
 
 export interface AgentAvailability {

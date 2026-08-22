@@ -8,12 +8,17 @@ import {
   projectKnowledgeBehaviorSlice,
   type KnowledgeProjectionResult,
 } from "./repository-knowledge/projector.ts";
-import { queryKnowledgeRecords } from "./repository-knowledge/query.ts";
+import {
+  queryKnowledgeRecordMatches,
+  type KnowledgeQueryConfidence,
+} from "./repository-knowledge/query.ts";
 import { readKnowledgeRecords } from "./repository-knowledge/store.ts";
 
 export interface LegoraEntryInput {
   repositoryRoot: string;
   question: string;
+  candidateRecordId?: string;
+  candidatesRejected?: boolean;
 }
 
 export interface LegoraEntryFreshness {
@@ -21,8 +26,19 @@ export interface LegoraEntryFreshness {
   result: KnowledgeFreshnessResult;
 }
 
+export interface LegoraEntryCandidate {
+  recordId: string;
+  kind: string;
+  subject: string;
+  structure?: KnowledgeRecord["structure"];
+  confidence: KnowledgeQueryConfidence | "RECOVERY";
+  directMatches: string[];
+  conceptMatches: string[];
+}
+
 export type LegoraEntryStatus =
   | "READY"
+  | "KNOWLEDGE_CANDIDATES"
   | "KNOWLEDGE_NOT_FOUND"
   | "KNOWLEDGE_STALE"
   | "KNOWLEDGE_UNKNOWN";
@@ -36,6 +52,11 @@ export type LegoraEntryNextAction =
       type: "REFRESH_KNOWLEDGE";
       question: string;
       recordIds: string[];
+    }
+  | {
+      type: "REVIEW_KNOWLEDGE_CANDIDATES";
+      question: string;
+      recordIds: string[];
     };
 
 export interface LegoraEntryResult {
@@ -46,11 +67,21 @@ export interface LegoraEntryResult {
   evidenceClaims: EvidenceClaim[];
   diagnostics: KnowledgeProjectionResult["diagnostics"] | null;
   freshness: LegoraEntryFreshness[];
+  candidateRecordIds?: string[];
+  candidates?: LegoraEntryCandidate[];
   nextAction: LegoraEntryNextAction | null;
 }
 
 function flowRecords(records: readonly KnowledgeRecord[]): KnowledgeRecord[] {
   return records.filter((record) => record.structure?.type === "BEHAVIOR_FLOW");
+}
+
+function recoveryCandidateRecords(records: readonly KnowledgeRecord[]): KnowledgeRecord[] {
+  const flows = flowRecords(records).sort((left, right) => left.id.localeCompare(right.id));
+  if (flows.length > 0) return flows;
+  return records
+    .filter((record) => record.structure !== undefined)
+    .sort((left, right) => left.id.localeCompare(right.id));
 }
 
 function relatedRecordIds(record: KnowledgeRecord): string[] {
@@ -125,10 +156,78 @@ function blockedStatus(freshness: readonly LegoraEntryFreshness[]): LegoraEntryS
 
 export async function runLegoraEntry(input: LegoraEntryInput): Promise<LegoraEntryResult> {
   const records = await readKnowledgeRecords(input.repositoryRoot);
-  const matches = queryKnowledgeRecords(records, input.question);
-  const flow = selectFlowRecord(records, matches);
+  const queryMatches = queryKnowledgeRecordMatches(records, input.question);
+  const recoveryRecords = queryMatches.length === 0 ? recoveryCandidateRecords(records) : [];
+  const candidates: LegoraEntryCandidate[] = queryMatches.length > 0
+    ? queryMatches.map((match) => ({
+        recordId: match.record.id,
+        kind: match.record.kind,
+        subject: match.record.subject,
+        structure: match.record.structure,
+        confidence: match.confidence,
+        directMatches: match.directMatches,
+        conceptMatches: match.conceptMatches,
+      }))
+    : recoveryRecords.map((record) => ({
+        recordId: record.id,
+        kind: record.kind,
+        subject: record.subject,
+        structure: record.structure,
+        confidence: "RECOVERY" as const,
+        directMatches: [],
+        conceptMatches: [],
+      }));
+  const candidateIds = candidates.map((candidate) => candidate.recordId);
+  const candidateRecords = queryMatches.length > 0
+    ? queryMatches.map(({ record }) => record)
+    : recoveryRecords;
+  const explicitlySelected = input.candidateRecordId
+    ? candidateRecords.find((record) => record.id === input.candidateRecordId)
+    : undefined;
+  const strongMatches = queryMatches
+    .filter((match) => match.confidence === "STRONG")
+    .map(({ record }) => record);
+  const matchesForProjection = input.candidateRecordId !== undefined
+    ? explicitlySelected ? [explicitlySelected] : []
+    : strongMatches;
+  const flow = selectFlowRecord(records, matchesForProjection);
 
   if (!flow) {
+    if (input.candidatesRejected) {
+      return {
+        status: "KNOWLEDGE_NOT_FOUND",
+        question: input.question,
+        flowRecordId: null,
+        behaviorSlice: null,
+        evidenceClaims: [],
+        diagnostics: null,
+        freshness: [],
+        nextAction: {
+          type: "ACQUIRE_KNOWLEDGE",
+          question: input.question,
+        },
+      };
+    }
+
+    if (candidates.length > 0) {
+      return {
+        status: "KNOWLEDGE_CANDIDATES",
+        question: input.question,
+        flowRecordId: null,
+        behaviorSlice: null,
+        evidenceClaims: [],
+        diagnostics: null,
+        freshness: [],
+        candidateRecordIds: candidateIds,
+        candidates,
+        nextAction: {
+          type: "REVIEW_KNOWLEDGE_CANDIDATES",
+          question: input.question,
+          recordIds: candidateIds,
+        },
+      };
+    }
+
     return {
       status: "KNOWLEDGE_NOT_FOUND",
       question: input.question,

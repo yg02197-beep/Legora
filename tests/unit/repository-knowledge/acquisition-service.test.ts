@@ -109,6 +109,103 @@ test("incremental acquisition does not duplicate HISTORY when ACTIVE evidence is
   assert.equal(updated?.createdAt, initial?.createdAt);
 });
 
+test("acquisition returns existing knowledge instead of creating a semantic duplicate under a new id", async () => {
+  const repositoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "legora-acquisition-duplicate-"));
+  await fs.mkdir(path.join(repositoryRoot, "src"));
+  await fs.writeFile(path.join(repositoryRoot, "src", "retry.ts"), "retry();\n", "utf8");
+  await writeKnowledgeRecord(repositoryRoot, {
+    id: "native:entity:download-retry",
+    kind: "entity:capability",
+    subject: "download retry coordinator",
+    structure: {
+      type: "ENTITY",
+      entityKind: "capability",
+      name: "Download retry coordinator",
+      description: "Chooses whether a failed download retries or stops",
+    },
+    activeEvidence: [{ filePath: "src/retry.ts", lineStart: 1, snippet: "retry();" }],
+    history: [],
+    createdAt: "2026-08-22T00:00:00.000Z",
+    updatedAt: "2026-08-22T00:00:00.000Z",
+  });
+  const proposal: KnowledgeAcquisitionProposal = {
+    candidates: [{
+      id: "native:entity:retry-decision",
+      kind: "entity:capability",
+      subject: "download retries coordinator",
+      structure: {
+        type: "ENTITY",
+        entityKind: "capability",
+        name: "Download retry coordinator",
+      },
+      evidenceLocators: [{ filePath: "src/retry.ts", lineStart: 1 }],
+    }],
+  };
+
+  const result = await acquireRepositoryKnowledge({ repositoryRoot, proposal });
+
+  assert.equal(result.status, "EXISTING_KNOWLEDGE");
+  assert.equal(result.code, "EXISTING_KNOWLEDGE_CANDIDATE");
+  assert.deepEqual(result.existingRecordIds, ["native:entity:download-retry"]);
+  assert.deepEqual((await readKnowledgeRecords(repositoryRoot)).map((record) => record.id), [
+    "native:entity:download-retry",
+  ]);
+});
+
+test("evidence overlap alone does not block distinct knowledge acquisition", async () => {
+  const repositoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "legora-acquisition-distinct-"));
+  await fs.mkdir(path.join(repositoryRoot, "src"));
+  await fs.writeFile(path.join(repositoryRoot, "src", "service.ts"), "service();\n", "utf8");
+  await writeKnowledgeRecord(repositoryRoot, {
+    id: "native:entity:service",
+    kind: "entity:service",
+    subject: "service entry point",
+    structure: { type: "ENTITY", entityKind: "service", name: "service" },
+    activeEvidence: [{ filePath: "src/service.ts", lineStart: 1, snippet: "service();" }],
+    history: [],
+    createdAt: "2026-08-22T00:00:00.000Z",
+    updatedAt: "2026-08-22T00:00:00.000Z",
+  });
+  const proposal: KnowledgeAcquisitionProposal = {
+    candidates: [{
+      id: "native:entity:logger",
+      kind: "entity:logger",
+      subject: "audit logger",
+      structure: { type: "ENTITY", entityKind: "logger", name: "audit logger" },
+      evidenceLocators: [{ filePath: "src/service.ts", lineStart: 1 }],
+    }],
+  };
+
+  const result = await acquireRepositoryKnowledge({ repositoryRoot, proposal });
+
+  assert.equal(result.status, "ACQUIRED");
+  assert.equal((await readKnowledgeRecords(repositoryRoot)).length, 2);
+});
+
+test("concurrent different-id duplicates are rechecked inside the atomic transaction", async () => {
+  const repositoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "legora-acquisition-concurrent-duplicate-"));
+  await fs.mkdir(path.join(repositoryRoot, "src"));
+  await fs.writeFile(path.join(repositoryRoot, "src", "service.ts"), "service();\n", "utf8");
+  const proposal = (id: string): KnowledgeAcquisitionProposal => ({
+    candidates: [{
+      id,
+      kind: "entity:service",
+      subject: "service entry point",
+      structure: { type: "ENTITY", entityKind: "service", name: "service" },
+      evidenceLocators: [{ filePath: "src/service.ts", lineStart: 1 }],
+    }],
+  });
+
+  const results = await Promise.all([
+    acquireRepositoryKnowledge({ repositoryRoot, proposal: proposal("native:entity:service-a") }),
+    acquireRepositoryKnowledge({ repositoryRoot, proposal: proposal("native:entity:service-b") }),
+  ]);
+
+  assert.equal(results.filter((result) => result.status === "ACQUIRED").length, 1);
+  assert.equal(results.filter((result) => result.status === "EXISTING_KNOWLEDGE").length, 1);
+  assert.equal((await readKnowledgeRecords(repositoryRoot)).length, 1);
+});
+
 test("structurally invalid proposals fail before repository publication", async () => {
   const repositoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "legora-acquisition-service-invalid-"));
   const proposal: KnowledgeAcquisitionProposal = {

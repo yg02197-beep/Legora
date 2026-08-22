@@ -54,15 +54,6 @@ async function withKnowledgeStoreLock<T>(
       const code = (error as NodeJS.ErrnoException).code;
       if (code !== "EEXIST" && code !== "EPERM") throw error;
 
-      if (code === "EPERM") {
-        try {
-          await fs.stat(lockPath);
-        } catch (statError) {
-          if ((statError as NodeJS.ErrnoException).code === "ENOENT") throw error;
-          throw statError;
-        }
-      }
-
       try {
         const stat = await fs.stat(lockPath);
         if (Date.now() - stat.mtimeMs > STORE_LOCK_STALE_MS) {

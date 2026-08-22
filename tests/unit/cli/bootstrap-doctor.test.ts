@@ -40,6 +40,29 @@ test("bootstrap defaults to human output and explicit missing agent may be pre-p
   }
 });
 
+test("bootstrap and doctor accept OpenCode as a first-class agent", async () => {
+  const home = await fs.mkdtemp(path.join(os.tmpdir(), "legora-cli-opencode-"));
+  const bin = await makeBin(["opencode"]);
+  try {
+    const bootstrap = await runCliCommand(["bootstrap", "--agent", "opencode", "--json"], process.cwd(), {
+      host: host(home, bin),
+      packageVersion: "0.1.0",
+    });
+    assert.equal(bootstrap.exitCode, 0);
+    assert.deepEqual(bootstrap.data.agents.map((entry: { agent: string }) => entry.agent), ["opencode"]);
+
+    const doctor = await runCliCommand(["doctor", "--agent", "opencode", "--json"], process.cwd(), {
+      host: host(home, bin),
+    });
+    assert.equal(doctor.exitCode, 0);
+    assert.equal(doctor.data.status, "READY");
+    assert.equal(doctor.data.agents[0].nativeDiscovery, "NOT_PROBED");
+  } finally {
+    await fs.rm(home, { recursive: true, force: true });
+    await fs.rm(bin, { recursive: true, force: true });
+  }
+});
+
 test("bootstrap --json suppresses human stdout and dry-run writes nothing", async () => {
   const home = await fs.mkdtemp(path.join(os.tmpdir(), "legora-cli-bootstrap-json-"));
   try {

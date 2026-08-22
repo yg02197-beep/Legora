@@ -24,10 +24,10 @@ function windowsHost(homeDir: string, binDir = ""): HostEnvironment {
   };
 }
 
-async function installCurrent(home: string, agents: readonly ("codex" | "claude" | "gemini")[]): Promise<void> {
+async function installCurrent(home: string, agents: readonly ("codex" | "claude" | "gemini" | "opencode")[]): Promise<void> {
   const snapshot = await loadCanonicalSkillSnapshot();
   const targets = new Set<string>();
-  if (agents.includes("codex") || agents.includes("gemini")) {
+  if (agents.includes("codex") || agents.includes("gemini") || agents.includes("opencode")) {
     targets.add(path.join(home, ".agents", "skills", "legora"));
   }
   if (agents.includes("claude")) targets.add(path.join(home, ".claude", "skills", "legora"));
@@ -81,6 +81,7 @@ test("all-agent Doctor ignores missing agents when one detected agent is healthy
     assert.deepEqual(result.agents.map((entry) => [entry.agent, entry.executable, entry.nativeDiscovery]), [
       ["codex", "PASS", "NOT_PROBED"],
       ["gemini", "NOT_FOUND", "NOT_FOUND"],
+      ["opencode", "NOT_FOUND", "NOT_FOUND"],
       ["claude", "NOT_FOUND", "NOT_FOUND"],
     ]);
   } finally {
@@ -107,12 +108,12 @@ test("explicit missing agent is NOT_READY even when its Skill is pre-provisioned
   }
 });
 
-test("Codex and Claude current managed installs remain NOT_PROBED for native discovery", async () => {
+test("Codex, OpenCode, and Claude current managed installs remain NOT_PROBED for native discovery", async () => {
   const home = await fs.mkdtemp(path.join(os.tmpdir(), "legora-doctor-not-probed-"));
-  const bin = await makeBin(["codex", "claude"]);
+  const bin = await makeBin(["codex", "opencode", "claude"]);
   try {
-    await installCurrent(home, ["codex", "claude"]);
-    const result = await doctorLegora({ requested: ["codex", "claude"], host: windowsHost(home, bin) });
+    await installCurrent(home, ["codex", "opencode", "claude"]);
+    const result = await doctorLegora({ requested: ["codex", "opencode", "claude"], host: windowsHost(home, bin) });
     assert.equal(result.status, "READY");
     for (const agent of result.agents) {
       assert.equal(agent.installTarget, "PASS");
@@ -224,10 +225,10 @@ test("conflict target is NOT_READY and Gemini probe is not executed", async () =
 
 test("Doctor is strictly read-only over fake home", async () => {
   const home = await fs.mkdtemp(path.join(os.tmpdir(), "legora-doctor-readonly-"));
-  const bin = await makeBin(["codex", "claude", "gemini"]);
+  const bin = await makeBin(["codex", "claude", "gemini", "opencode"]);
   const target = path.join(home, ".agents", "skills", "legora");
   try {
-    await installCurrent(home, ["codex", "claude", "gemini"]);
+    await installCurrent(home, ["codex", "claude", "gemini", "opencode"]);
     const before = await treeBytes(home);
     const result = await doctorLegora({
       requested: "all",
