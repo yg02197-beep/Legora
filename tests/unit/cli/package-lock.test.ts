@@ -10,6 +10,8 @@ test("package lock root metadata matches package.json version and Legora bin", a
   const pkg = JSON.parse(await fs.readFile(path.join(projectRoot, "package.json"), "utf8"));
   const lock = JSON.parse(await fs.readFile(path.join(projectRoot, "package-lock.json"), "utf8"));
 
+  assert.equal(pkg.private, true);
+  assert.equal(lock.packages?.[""]?.private, true);
   assert.equal(lock.version, pkg.version);
   assert.equal(lock.packages?.[""]?.version, pkg.version);
   assert.equal(lock.packages?.[""]?.bin?.legora, pkg.bin?.legora?.replace(/^\.\//, ""));

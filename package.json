@@ -8,8 +8,8 @@
   },
   "files": [
     "dist",
-    "SKILL.md",
-    "references"
+    "skills/legora",
+    "README.md"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -18,6 +18,8 @@
     "test:integration:cartographer-real": "node --import tsx --test tests/integration/providers/cartographer/real-model.test.ts",
     "test:integration:causal-real": "node --import tsx --test tests/integration/core/causal-real-model.test.ts",
     "test:integration:r4": "node --import tsx --test --test-concurrency=1 tests/integration/r4/*.test.ts",
+    "test:integration:r5": "node --import tsx --test --test-concurrency=1 tests/integration/r5/*.test.ts",
+    "test:live:codex": "node scripts/r5-live-codex.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

@@ -1,0 +1,9 @@
+Discovered Agent Skills:
+
+legora [Enabled]
+  Description: Understand repository behavior from current source evidence.
+  Location:    __LEGORA_LOCATION__
+
+other-skill [Enabled]
+  Description: Unrelated fixture skill.
+  Location:    __OTHER_LOCATION__

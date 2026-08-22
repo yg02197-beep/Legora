@@ -16,7 +16,11 @@ async function main() {
   try {
     const argv = process.argv.slice(2);
     const result = await runCliCommand(argv, process.cwd(), { stdin: await acquisitionStdin(argv) });
-    process.stdout.write(`${JSON.stringify(result.data)}\n`);
+    if (result.stdout !== undefined) {
+      process.stdout.write(result.stdout.endsWith("\n") ? result.stdout : `${result.stdout}\n`);
+    } else {
+      process.stdout.write(`${JSON.stringify(result.data)}\n`);
+    }
     process.exitCode = result.exitCode;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

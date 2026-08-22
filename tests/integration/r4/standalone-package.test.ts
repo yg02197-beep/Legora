@@ -18,8 +18,12 @@ test("packed Legora runs from an external repository without target dependencies
     assert.equal(await exists(path.join(workspace.targetRepository, "package-lock.json")), false);
     assert.equal(installed.executable.startsWith(workspace.toolHome), true);
     assert.equal(await exists(path.join(installed.packageRoot, "dist", "cli", "bin.mjs")), true);
-    assert.equal(await exists(path.join(installed.packageRoot, "SKILL.md")), true);
-    assert.equal(await exists(path.join(installed.packageRoot, "references", "explain.md")), true);
+    assert.equal(await exists(path.join(installed.packageRoot, "skills", "legora", "SKILL.md")), true);
+    assert.equal(await exists(path.join(installed.packageRoot, "skills", "legora", "references", "explain.md")), true);
+    assert.equal(await exists(path.join(installed.packageRoot, "skills", "legora", "references", "explore.md")), true);
+    assert.equal(await exists(path.join(installed.packageRoot, "skills", "legora", "references", "verify.md")), true);
+    assert.equal(await exists(path.join(installed.packageRoot, "SKILL.md")), false);
+    assert.equal(await exists(path.join(installed.packageRoot, "references")), false);
     assert.equal(await exists(path.join(installed.packageRoot, "src")), false);
     assert.equal(await exists(path.join(installed.packageRoot, "tests")), false);
     assert.equal(await exists(path.join(installed.packageRoot, "node_modules", "tsx")), false);

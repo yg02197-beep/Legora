@@ -9,8 +9,8 @@ async function read(relativePath: string): Promise<string> {
   return fs.readFile(path.join(root, relativePath), "utf8");
 }
 
-test("root SKILL.md encodes the R2 Entry-first acquire-refresh handshake", async () => {
-  const skill = await read("SKILL.md");
+test("canonical SKILL.md encodes the R2 Entry-first acquire-refresh handshake", async () => {
+  const skill = await read("skills/legora/SKILL.md");
 
   assert.match(skill, /legora entry/i);
   assert.match(skill, /KNOWLEDGE_NOT_FOUND/);
@@ -23,8 +23,8 @@ test("root SKILL.md encodes the R2 Entry-first acquire-refresh handshake", async
   assert.match(skill, /entry.*again|re-run.*entry|rerun.*entry/i);
 });
 
-test("root SKILL.md gates authoritative capability output on READY", async () => {
-  const skill = await read("SKILL.md");
+test("canonical SKILL.md gates authoritative capability output on READY", async () => {
+  const skill = await read("skills/legora/SKILL.md");
 
   assert.match(skill, /before READY|until READY|READY.*before/i);
   assert.match(skill, /Explain/);
@@ -32,8 +32,8 @@ test("root SKILL.md gates authoritative capability output on READY", async () =>
   assert.match(skill, /Verify/);
 });
 
-test("root SKILL.md points to the three capability references", async () => {
-  const skill = await read("SKILL.md");
+test("canonical SKILL.md points to the three capability references", async () => {
+  const skill = await read("skills/legora/SKILL.md");
 
   assert.match(skill, /references\/explain\.md/);
   assert.match(skill, /references\/explore\.md/);
@@ -41,7 +41,7 @@ test("root SKILL.md points to the three capability references", async () => {
 });
 
 test("Explain reference builds a simple mental model while preserving repository evidence boundaries", async () => {
-  const explain = await read("references/explain.md");
+  const explain = await read("skills/legora/references/explain.md");
 
   assert.match(explain, /mental model/i);
   assert.match(explain, /terminology bridge/i);
@@ -54,7 +54,7 @@ test("Explain reference builds a simple mental model while preserving repository
 });
 
 test("Explore reference distinguishes inspection from executable Microworld behavior", async () => {
-  const explore = await read("references/explore.md");
+  const explore = await read("skills/legora/references/explore.md");
 
   assert.match(explore, /Explore.*Microworld|Microworld.*Explore/is);
   assert.match(explore, /not every|not all|broader than/i);
@@ -67,7 +67,7 @@ test("Explore reference distinguishes inspection from executable Microworld beha
 });
 
 test("Verify reference evaluates observable understanding without permanent or binary-only claims", async () => {
-  const verify = await read("references/verify.md");
+  const verify = await read("skills/legora/references/verify.md");
 
   assert.match(verify, /observable/i);
   assert.match(verify, /explain-back/i);
@@ -84,10 +84,10 @@ test("Verify reference evaluates observable understanding without permanent or b
 
 test("public Skill surface stays provider- and coding-agent-neutral", async () => {
   const files = [
-    "SKILL.md",
-    "references/explain.md",
-    "references/explore.md",
-    "references/verify.md",
+    "skills/legora/SKILL.md",
+    "skills/legora/references/explain.md",
+    "skills/legora/references/explore.md",
+    "skills/legora/references/verify.md",
   ];
 
   const publicText = (await Promise.all(files.map(read))).join("\n");
@@ -106,8 +106,8 @@ test("public Skill surface stays provider- and coding-agent-neutral", async () =
   }
 });
 
-test("SKILL.md keeps authoritative evidence fields out of agent-authored acquisition proposals", async () => {
-  const skill = await read("SKILL.md");
+test("canonical SKILL.md keeps authoritative evidence fields out of agent-authored acquisition proposals", async () => {
+  const skill = await read("skills/legora/SKILL.md");
 
   assert.match(skill, /do not author/i);
   assert.match(skill, /snippet/i);
@@ -115,6 +115,14 @@ test("SKILL.md keeps authoritative evidence fields out of agent-authored acquisi
   assert.match(skill, /timestamps?/i);
   assert.match(skill, /CONFIRMED/i);
   assert.match(skill, /do not write.*repository-knowledge\.json/i);
+});
+
+test("root SKILL.md is a compatibility pointer rather than a second workflow copy", async () => {
+  const rootSkill = await read("SKILL.md");
+
+  assert.match(rootSkill, /skills\/legora\/SKILL\.md/);
+  assert.doesNotMatch(rootSkill, /## Mandatory procedure/);
+  assert.equal(rootSkill.length < 800, true);
 });
 
 test("README points coding agents to the canonical Skill surface", async () => {
