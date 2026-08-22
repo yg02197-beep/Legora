@@ -1,14 +1,23 @@
 {
   "name": "legora",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "legora": "./src/cli/bin.mjs"
+    "legora": "./dist/cli/bin.mjs"
   },
+  "files": [
+    "dist",
+    "SKILL.md",
+    "references"
+  ],
   "scripts": {
+    "build": "node scripts/build.mjs",
+    "prepack": "npm run build",
     "test": "node --import tsx --test tests/unit/**/*.test.ts",
     "test:integration:cartographer-real": "node --import tsx --test tests/integration/providers/cartographer/real-model.test.ts",
     "test:integration:causal-real": "node --import tsx --test tests/integration/core/causal-real-model.test.ts",
+    "test:integration:r4": "node --import tsx --test --test-concurrency=1 tests/integration/r4/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

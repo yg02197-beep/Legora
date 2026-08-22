@@ -27,6 +27,8 @@ Repository Knowledge Native Acquisition R2가 구현되어 있습니다. coding 
 
 Entry는 질문에 필요한 Knowledge가 없으면 `ACQUIRE_KNOWLEDGE`, 선택된 Knowledge가 stale/unknown이면 `REFRESH_KNOWLEDGE`를 반환하며, 검증된 현재 Knowledge가 있을 때만 LEGORA-owned Behavior Slice를 제공합니다.
 
+Standalone External Repository Validation R4를 통과했습니다. production package는 plain Node.js `dist` CLI로 실행되며 대상 repository에 Legora, `tsx`, TypeScript를 설치하지 않고도 acquire/READY/stale/refresh lifecycle, repository isolation, fail-closed 경계가 검증되었습니다. 실제 repository를 사용한 단일 coding-agent pilot에서도 Entry-first orchestration과 evidence-bounded Explain이 확인되었습니다. 이 결과는 multi-agent 호환성이나 remote repository 지원을 의미하지 않습니다.
+
 Cartographer 지원은 Repository Knowledge로 가져오기 위한 legacy import compatibility 경계로만 유지합니다.
 
 ## Coding-agent usage

@@ -12,7 +12,7 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 test("package exposes the Legora CLI bin without a provider-specific executable", async () => {
   const pkg = JSON.parse(await fs.readFile(path.join(projectRoot, "package.json"), "utf8"));
 
-  assert.equal(pkg.bin?.legora, "./src/cli/bin.mjs");
+  assert.equal(pkg.bin?.legora, "./dist/cli/bin.mjs");
 });
 
 test("CLI process writes one JSON result and propagates usage exit code", () => {
