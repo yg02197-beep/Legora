@@ -66,6 +66,22 @@ test("freshness never reads active evidence paths outside the repository root", 
   assert.equal(result.issues[0]?.code, "EVIDENCE_PATH_OUTSIDE_REPOSITORY");
 });
 
+test("freshness rejects a junction or symlink that resolves outside the repository", async () => {
+  const repositoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "legora-knowledge-freshness-real-boundary-"));
+  const outsideRoot = await fs.mkdtemp(path.join(os.tmpdir(), "legora-knowledge-freshness-real-outside-"));
+  await fs.writeFile(path.join(outsideRoot, "secret.ts"), "outside\n", "utf8");
+  await fs.symlink(outsideRoot, path.join(repositoryRoot, "link"), process.platform === "win32" ? "junction" : "dir");
+  const record = recordWithEvidence([
+    { filePath: "link/secret.ts", lineStart: 1, snippet: "outside" },
+  ]);
+
+  const result = await checkKnowledgeRecordFreshness(repositoryRoot, record);
+
+  assert.equal(result.status, "UNKNOWN");
+  assert.equal(result.checkedAnchors, 0);
+  assert.equal(result.issues[0]?.code, "EVIDENCE_PATH_OUTSIDE_REPOSITORY");
+});
+
 test("freshness is UNKNOWN when active evidence has no snapshot snippet", async () => {
   const repositoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "legora-knowledge-freshness-no-snippet-"));
   const record = recordWithEvidence([
@@ -98,6 +114,20 @@ test("freshness normalizes CRLF and LF before comparing active evidence", async 
   const repositoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "legora-knowledge-freshness-newlines-"));
   await fs.mkdir(path.join(repositoryRoot, "src"));
   await fs.writeFile(path.join(repositoryRoot, "src", "fixture.ts"), "zero\r\none\r\ntwo\r\n", "utf8");
+  const record = recordWithEvidence([
+    { filePath: "src/fixture.ts", lineStart: 2, lineEnd: 3, snippet: "one\ntwo" },
+  ]);
+
+  const result = await checkKnowledgeRecordFreshness(repositoryRoot, record);
+
+  assert.equal(result.status, "CURRENT");
+  assert.equal(result.checkedAnchors, 1);
+});
+
+test("freshness normalizes bare CR consistently with evidence capture", async () => {
+  const repositoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "legora-knowledge-freshness-bare-cr-"));
+  await fs.mkdir(path.join(repositoryRoot, "src"));
+  await fs.writeFile(path.join(repositoryRoot, "src", "fixture.ts"), "zero\rone\rtwo\r", "utf8");
   const record = recordWithEvidence([
     { filePath: "src/fixture.ts", lineStart: 2, lineEnd: 3, snippet: "one\ntwo" },
   ]);

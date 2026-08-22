@@ -23,6 +23,14 @@ Repository에서 필요한 근거만 조사해 Behavior Slice를 만들고, 사�
 
 ## 상태
 
-Repository Knowledge Integration R1이 구현되어 있습니다. 질문을 Repository Knowledge에서 선택하고, 현재 ACTIVE evidence의 freshness를 확인한 뒤 LEGORA-owned Behavior Slice로 투영하는 native Entry/CLI 경로가 동작합니다.
+Repository Knowledge Native Acquisition R2가 구현되어 있습니다. coding agent는 `legora knowledge acquire`에 proposal JSON을 전달할 수 있고, Legora는 구조를 검증한 뒤 실제 repository source에서 evidence를 직접 캡처해 ACTIVE/HISTORY Knowledge를 원자적으로 저장합니다.
+
+Entry는 질문에 필요한 Knowledge가 없으면 `ACQUIRE_KNOWLEDGE`, 선택된 Knowledge가 stale/unknown이면 `REFRESH_KNOWLEDGE`를 반환하며, 검증된 현재 Knowledge가 있을 때만 LEGORA-owned Behavior Slice를 제공합니다.
 
 Cartographer 지원은 Repository Knowledge로 가져오기 위한 legacy import compatibility 경계로만 유지합니다.
+
+## Coding-agent usage
+
+The canonical orchestration surface is `SKILL.md`. A coding agent starts a repository-understanding question with `legora entry <question>`, follows any acquire/refresh handshake until Entry is `READY`, then uses `references/explain.md`, `references/explore.md`, or `references/verify.md` for the smallest useful Explain / Explore / Verify intervention.
+
+The public Skill is provider-neutral. Repository truth, evidence capture, freshness, and Behavior Slice ownership remain enforced by the Legora runtime rather than by prose in the Skill.

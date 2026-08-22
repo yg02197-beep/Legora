@@ -27,6 +27,17 @@ export type LegoraEntryStatus =
   | "KNOWLEDGE_STALE"
   | "KNOWLEDGE_UNKNOWN";
 
+export type LegoraEntryNextAction =
+  | {
+      type: "ACQUIRE_KNOWLEDGE";
+      question: string;
+    }
+  | {
+      type: "REFRESH_KNOWLEDGE";
+      question: string;
+      recordIds: string[];
+    };
+
 export interface LegoraEntryResult {
   status: LegoraEntryStatus;
   question: string;
@@ -35,6 +46,7 @@ export interface LegoraEntryResult {
   evidenceClaims: EvidenceClaim[];
   diagnostics: KnowledgeProjectionResult["diagnostics"] | null;
   freshness: LegoraEntryFreshness[];
+  nextAction: LegoraEntryNextAction | null;
 }
 
 function flowRecords(records: readonly KnowledgeRecord[]): KnowledgeRecord[] {
@@ -125,6 +137,10 @@ export async function runLegoraEntry(input: LegoraEntryInput): Promise<LegoraEnt
       evidenceClaims: [],
       diagnostics: null,
       freshness: [],
+      nextAction: {
+        type: "ACQUIRE_KNOWLEDGE",
+        question: input.question,
+      },
     };
   }
 
@@ -141,6 +157,13 @@ export async function runLegoraEntry(input: LegoraEntryInput): Promise<LegoraEnt
       evidenceClaims: [],
       diagnostics: projection.diagnostics,
       freshness,
+      nextAction: {
+        type: "REFRESH_KNOWLEDGE",
+        question: input.question,
+        recordIds: freshness
+          .filter((item) => item.result.status !== "CURRENT")
+          .map((item) => item.recordId),
+      },
     };
   }
 
@@ -152,6 +175,7 @@ export async function runLegoraEntry(input: LegoraEntryInput): Promise<LegoraEnt
     evidenceClaims: projection.evidenceClaims,
     diagnostics: projection.diagnostics,
     freshness,
+    nextAction: null,
   };
 }
 

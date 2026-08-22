@@ -1,4 +1,6 @@
 import { runLegoraEntry } from "../entry.ts";
+import type { KnowledgeAcquisitionProposal } from "../repository-knowledge/acquisition-contracts.ts";
+import { acquireRepositoryKnowledge } from "../repository-knowledge/acquisition-service.ts";
 import { checkKnowledgeRecordFreshness } from "../repository-knowledge/freshness.ts";
 import { queryKnowledgeRecords } from "../repository-knowledge/query.ts";
 import { readKnowledgeRecords } from "../repository-knowledge/store.ts";
@@ -10,9 +12,77 @@ export interface CliCommandResult {
 
 const USAGE = [
   "legora entry <question>",
+  "legora knowledge acquire < proposal.json",
   "legora knowledge query <question>",
   "legora knowledge status",
 ].join("\n");
+
+export interface CliCommandInput {
+  stdin?: string;
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isOptionalString(value: unknown): boolean {
+  return value === undefined || typeof value === "string";
+}
+
+function isEvidenceLocator(value: unknown): boolean {
+  return isObject(value)
+    && typeof value.filePath === "string"
+    && typeof value.lineStart === "number"
+    && (value.lineEnd === undefined || typeof value.lineEnd === "number");
+}
+
+function isKnowledgeStructure(value: unknown): boolean {
+  if (!isObject(value) || typeof value.type !== "string") return false;
+  if (value.type === "ENTITY") {
+    return typeof value.entityKind === "string"
+      && isOptionalString(value.name)
+      && isOptionalString(value.description);
+  }
+  if (value.type === "RELATIONSHIP") {
+    return typeof value.relationshipKind === "string"
+      && typeof value.sourceId === "string"
+      && typeof value.targetId === "string";
+  }
+  if (value.type === "BEHAVIOR_FLOW") {
+    return typeof value.flowKind === "string"
+      && typeof value.name === "string"
+      && Array.isArray(value.steps)
+      && value.steps.every((step) => isObject(step)
+        && typeof step.entityId === "string"
+        && isOptionalString(step.label));
+  }
+  return false;
+}
+
+function parseAcquisitionProposal(raw: string | undefined): KnowledgeAcquisitionProposal | null {
+  if (!raw?.trim()) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isObject(parsed) || !Array.isArray(parsed.candidates)) {
+    return null;
+  }
+  for (const candidate of parsed.candidates) {
+    if (!isObject(candidate)
+      || typeof candidate.id !== "string"
+      || typeof candidate.kind !== "string"
+      || typeof candidate.subject !== "string"
+      || !Array.isArray(candidate.evidenceLocators)
+      || !candidate.evidenceLocators.every(isEvidenceLocator)
+      || (candidate.structure !== undefined && !isKnowledgeStructure(candidate.structure))) {
+      return null;
+    }
+  }
+  return parsed as unknown as KnowledgeAcquisitionProposal;
+}
 
 function usageError(message: string): CliCommandResult {
   return {
@@ -37,6 +107,7 @@ function statusExitCode(status: string): number {
 export async function runCliCommand(
   argv: readonly string[],
   repositoryRoot: string,
+  input: CliCommandInput = {},
 ): Promise<CliCommandResult> {
   if (argv[0] === "entry") {
     const question = argv.slice(1).join(" ").trim();
@@ -45,6 +116,16 @@ export async function runCliCommand(
     return {
       exitCode: statusExitCode(result.status),
       data: { command: "entry", ...result },
+    };
+  }
+
+  if (argv[0] === "knowledge" && argv[1] === "acquire" && argv.length === 2) {
+    const proposal = parseAcquisitionProposal(input.stdin);
+    if (!proposal) return usageError("knowledge acquire requires one valid proposal JSON document on stdin.");
+    const result = await acquireRepositoryKnowledge({ repositoryRoot, proposal });
+    return {
+      exitCode: result.status === "ACQUIRED" ? 0 : 6,
+      data: { command: "knowledge acquire", ...result },
     };
   }
 

@@ -17,7 +17,7 @@ export interface KnowledgeFreshnessResult {
 }
 
 function normalizeNewlines(value: string): string {
-  return value.replace(/\r\n/g, "\n");
+  return value.replace(/\r\n?/g, "\n");
 }
 
 function isInsideRepository(repositoryRoot: string, absolutePath: string): boolean {
@@ -35,6 +35,7 @@ export async function checkKnowledgeRecordFreshness(
 ): Promise<KnowledgeFreshnessResult> {
   let checkedAnchors = 0;
   const issues: KnowledgeFreshnessIssue[] = [];
+  const realRepositoryRoot = await fs.realpath(repositoryRoot);
 
   for (const anchor of record.activeEvidence) {
     if (!anchor.snippet) {
@@ -57,10 +58,38 @@ export async function checkKnowledgeRecordFreshness(
         }],
       };
     }
+    let realPath: string;
+    try {
+      realPath = await fs.realpath(absolutePath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return {
+          status: "STALE",
+          checkedAnchors,
+          issues: [{
+            code: "EVIDENCE_FILE_MISSING",
+            filePath: anchor.filePath,
+            message: "A file referenced by active knowledge evidence no longer exists.",
+          }],
+        };
+      }
+      throw error;
+    }
+    if (!isInsideRepository(realRepositoryRoot, realPath)) {
+      return {
+        status: "UNKNOWN",
+        checkedAnchors,
+        issues: [{
+          code: "EVIDENCE_PATH_OUTSIDE_REPOSITORY",
+          filePath: anchor.filePath,
+          message: "Active knowledge evidence resolves outside the repository root and was not read.",
+        }],
+      };
+    }
     let content: string;
     try {
       content = normalizeNewlines(
-        await fs.readFile(absolutePath, "utf8"),
+        await fs.readFile(realPath, "utf8"),
       );
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {

@@ -127,6 +127,10 @@ test("Legora Entry reports missing knowledge instead of invoking a provider refr
     evidenceClaims: [],
     diagnostics: null,
     freshness: [],
+    nextAction: {
+      type: "ACQUIRE_KNOWLEDGE",
+      question: "completely unrelated topic",
+    },
   });
 });
 
