@@ -5,7 +5,7 @@
 - Project: **Legora**
 - Date: 2026-08-14
 - Spike: Cartographer + learn-codebase integration feasibility
-- Result: **PARTIAL PASS — semantic adapter proof PASS, upstream local runtime acquisition BLOCKED by QWE9 safety policy**
+- Result: **PARTIAL PASS — semantic adapter proof PASS, upstream local runtime acquisition BLOCKED by host environment safety policy**
 - Production implementation: **not started**
 - Commit / push: **not performed**
 
@@ -70,9 +70,9 @@ Result:
 
 Reason:
 
-QWE9 does not permit free-form network shell execution through the generic shell provider.
+The host environment does not permit free-form network shell execution through the generic shell provider.
 
-### Attempt 2 — QWE9 Network Acquisition, two ZIPs
+### Attempt 2 — approved network acquisition path, two ZIPs
 
 Result:
 
@@ -82,7 +82,7 @@ Reason:
 
 multi-item archive publication is not proven atomic.
 
-### Attempt 3 — QWE9 Network Acquisition, Cartographer ZIP only
+### Attempt 3 — approved network acquisition path, Cartographer ZIP only
 
 Result:
 
@@ -410,4 +410,4 @@ On one disposable target repository:
 
 This is the first spike that would prove the full Legora-specific value instead of only adapter compatibility.
 
-Current blocker for that exact runtime proof is QWE9's refusal to acquire/execute active-content repository archives through the current approved network path.
+Current blocker for that exact runtime proof is that the host environment does not permit acquisition or execution of active-content repository archives through the approved network path.
