@@ -2,3 +2,12 @@
 .cartographer/
 node_modules/
 dist/
+.legora/
+.env
+.env.*
+!.env.example
+coverage/
+*.log
+*.tgz
+.DS_Store
+Thumbs.db

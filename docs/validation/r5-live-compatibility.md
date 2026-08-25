@@ -17,7 +17,7 @@ This validation intentionally closes the Codex live gate only. Claude Code and G
 
 Codex user-scope target:
 
-`C:\Users\pc\.agents\skills\legora`
+`<HOME>\.agents\skills\legora`
 
 `legora doctor --agent codex --json` reported:
 
