@@ -6,7 +6,7 @@ Status: R4_COMPLETE
 
 - repository: `<EXTERNAL_REPOSITORY_PATH>`
 - question: `POP3 메일을 발견한 뒤 AI enrichment까지 어떤 순서로 처리되는가?`
-- agent: `ChatGPT + asd2`
+- agent: `ChatGPT-compatible coding agent`
 - Legora interface: packed standalone CLI plus root `SKILL.md` / `references/`
 
 ## Procedure

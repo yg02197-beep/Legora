@@ -204,7 +204,7 @@ Observed DOM results:
 
 Artifact runtime validation was therefore updated to `PASS`.
 
-QWE9's own browser-region screenshot helper is currently macOS-only, so Windows screenshot capture was unavailable; Chrome headless DOM execution was used instead.
+The available browser-region screenshot helper is currently macOS-only, so Windows screenshot capture was unavailable; Chrome headless DOM execution was used instead.
 
 ---
 
