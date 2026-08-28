@@ -32,7 +32,7 @@ test("packed Legora runs from an external repository without target dependencies
     const result = await runInstalledLegora(
       installed,
       workspace.targetRepository,
-      ["entry", "request routing"],
+      ["entry", "--json", "request routing"],
     );
 
     assert.equal(result.exitCode, 3, result.stderr || result.stdout);
