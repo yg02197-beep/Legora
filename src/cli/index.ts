@@ -19,7 +19,8 @@ import {
 } from "../repository-knowledge/simple-acquisition.ts";
 import { readKnowledgeRecords } from "../repository-knowledge/store.ts";
 import { resolveLegoraPackageRoot } from "../skills/canonical.ts";
-import { renderBootstrapResult, renderDoctorResult } from "./render.ts";
+import { computeScanCoverage } from "../scan/coverage.ts";
+import { renderBootstrapResult, renderDoctorResult, renderScanResult } from "./render.ts";
 
 export interface CliCommandResult {
   exitCode: number;
@@ -35,6 +36,7 @@ const USAGE = [
   "legora knowledge acquire --example",
   "legora knowledge query <question>",
   "legora knowledge status",
+  "legora scan [--depth file|module] [--json]",
   "legora bootstrap [--agent codex|claude|gemini|opencode|all] [--dry-run] [--json]",
   "legora doctor [--agent codex|claude|gemini|opencode] [--json]",
 ].join("\n");
@@ -285,6 +287,33 @@ export async function runCliCommand(
       exitCode: result.status === "READY" ? 0 : 7,
       data: { command: "doctor", ...result },
       stdout: options.json ? undefined : renderDoctorResult(result),
+    };
+  }
+
+  if (argv[0] === "scan") {
+    let depth: "file" | "module" = "module";
+    let json = false;
+    for (let index = 1; index < argv.length; index += 1) {
+      const token = argv[index];
+      if (token === "--depth") {
+        if (index + 1 >= argv.length) return usageError("--depth requires a value (file or module).");
+        const value = argv[index + 1];
+        if (value !== "file" && value !== "module") return usageError("--depth must be 'file' or 'module'.");
+        depth = value;
+        index += 1;
+        continue;
+      }
+      if (token === "--json") {
+        json = true;
+        continue;
+      }
+      return usageError("Invalid scan options.");
+    }
+    const result = await computeScanCoverage(repositoryRoot, { depth });
+    return {
+      exitCode: 0,
+      data: { command: "scan", ...result },
+      stdout: json ? undefined : renderScanResult(result),
     };
   }
 
