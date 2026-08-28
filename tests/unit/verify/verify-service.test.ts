@@ -293,3 +293,16 @@ test("insufficient evidence (no constraints or failures) returns INSUFFICIENT_EV
   const result = await runLegoraVerify({ repositoryRoot, flowRecordId: "native:flow:simple-flow" });
   assert.equal(result.status, "INSUFFICIENT_EVIDENCE");
 });
+
+test("invalid choice ID returns INVALID_CHOICE", async () => {
+  const repositoryRoot = await createVerifyFixture();
+  const result = await runLegoraVerify({
+    repositoryRoot,
+    flowRecordId: "native:flow:auth-enforcement",
+    answerId: "choice:nonexistent",
+  });
+
+  assert.equal(result.status, "INVALID_CHOICE");
+  assert.ok(result.reason);
+  assert.match(result.reason!, /nonexistent/);
+});

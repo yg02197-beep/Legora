@@ -308,6 +308,10 @@ export function renderVerifyResult(result: VerifyResult, flowRecordId: string): 
     return `퀴즈를 만들 수 없습니다 (증거 부족)\n`;
   }
 
+  if (result.status === "INVALID_CHOICE") {
+    return `잘못된 선택입니다: ${result.reason ?? "Invalid choice ID."}\n`;
+  }
+
   if (result.status === "CHALLENGE_READY") {
     const challenge = result.challenge!;
     const prompt = challenge.prompt;

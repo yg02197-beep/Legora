@@ -365,6 +365,7 @@ export async function runCliCommand(
         exitCode = 1;
         break;
       case "NOT_FLOW":
+      case "INVALID_CHOICE":
         exitCode = 2;
         break;
       case "NOT_FOUND":

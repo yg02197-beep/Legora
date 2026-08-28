@@ -78,15 +78,16 @@ export function buildScenarioDraftFromSlice(
       observationFactRefs: [{ sliceRef, factId: failure.id }],
     });
   } else if (executableConstraints.length === 0 && observations.length >= 1 && executableFailures.length >= 1) {
-    const observation = observations[0]!;
     const failure = executableFailures[0]!;
     const conditionFact = executableFlows[0] ?? executableEffects[0];
     if (!conditionFact) return null;
+    // Pick an observation that is different from the condition fact to avoid tautological questions
+    const normalObservation = observations.find((o) => o.id !== conditionFact.id) ?? failure;
     cases.push({
       id: "case-0",
       label: "Normal path",
       conditionFactRefs: [{ sliceRef, factId: conditionFact.id }],
-      observationFactRefs: [{ sliceRef, factId: observation.id }],
+      observationFactRefs: [{ sliceRef, factId: normalObservation.id }],
     });
     cases.push({
       id: "case-1",

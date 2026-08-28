@@ -295,3 +295,16 @@ test("invalid verify usage returns exit 2", async () => {
   assert.equal(result.exitCode, 2);
   assert.equal(result.data.status, "USAGE_ERROR");
 });
+
+test("verify --answer with invalid choice ID returns exit 2", async () => {
+  const repositoryRoot = await createVerifyCliFixture();
+  const result = await runCliCommand(
+    ["verify", "--answer", "choice:nonexistent", "native:flow:auth-enforcement"],
+    repositoryRoot,
+  );
+
+  assert.equal(result.exitCode, 2);
+  assert.equal(result.data.status, "INVALID_CHOICE");
+  assert.ok(result.stdout);
+  assert.match(result.stdout, /nonexistent/);
+});

@@ -15,7 +15,8 @@ export type VerifyStatus =
   | "NOT_FLOW"
   | "STALE"
   | "UNKNOWN"
-  | "INSUFFICIENT_EVIDENCE";
+  | "INSUFFICIENT_EVIDENCE"
+  | "INVALID_CHOICE";
 
 export interface VerifyResult {
   status: VerifyStatus;
@@ -77,6 +78,11 @@ export async function runLegoraVerify(options: RunLegoraVerifyOptions): Promise<
       challenge,
       evidenceClaims: projection.evidenceClaims,
     };
+  }
+
+  const validChoice = challenge.prompt.choices.some((c) => c.id === answerId);
+  if (!validChoice) {
+    return { status: "INVALID_CHOICE", reason: `Choice '${answerId}' is not a valid option.` };
   }
 
   const predictionResult = evaluatePrediction(challenge, answerId);

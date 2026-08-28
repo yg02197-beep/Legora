@@ -141,3 +141,61 @@ test("non-CONFIRMED evidence facts are excluded", () => {
   // unless the flows themselves have different texts; with 1 constraint it needs a failure
   assert.equal(result, null);
 });
+
+test("strategy-4 avoids using same fact as condition and observation", () => {
+  // Strategy-4: no constraints, 1 flow + 1 failure
+  // The flow is used as condition, so the observation must be different
+  const f1 = makeFact("flows", "Normal execution path", "flow:1", "claim:f1");
+  const fail1 = makeFact("failures", "Error path triggered", "failure:1", "claim:fail1");
+
+  const claims = [
+    confirmedClaim("claim:f1", "src/a.ts", 1),
+    confirmedClaim("claim:fail1", "src/b.ts", 5),
+  ];
+
+  const slice = makeSlice({ flows: [f1], failures: [fail1] });
+  const projection = makeProjection(slice, claims);
+  const result = buildScenarioDraftFromSlice(projection);
+
+  // With only 1 flow (used as condition) and no effects, the normal observation
+  // must fall back to the failure fact to avoid self-reference.
+  // Both cases would then have failure as observation, making texts identical -> returns null
+  // OR the bridge picks a different observation. Let's verify no tautological case exists.
+  if (result !== null) {
+    for (const c of result.draft.cases) {
+      const conditionIds = c.conditionFactRefs.map((r) => r.factId);
+      const observationIds = c.observationFactRefs.map((r) => r.factId);
+      for (const obsId of observationIds) {
+        assert.ok(!conditionIds.includes(obsId), `Case ${c.id} has same fact in condition and observation`);
+      }
+    }
+  }
+});
+
+test("strategy-4 with 2 flows + 1 failure produces valid draft without overlap", () => {
+  // 2 flows, no constraints, 1 failure: condition = flow[0], observation can be flow[1] (skipping flow[0])
+  const f1 = makeFact("flows", "Primary flow path", "flow:1", "claim:f1");
+  const f2 = makeFact("flows", "Secondary flow path", "flow:2", "claim:f2");
+  const fail1 = makeFact("failures", "Error path triggered", "failure:1", "claim:fail1");
+
+  const claims = [
+    confirmedClaim("claim:f1", "src/a.ts", 1),
+    confirmedClaim("claim:f2", "src/a.ts", 10),
+    confirmedClaim("claim:fail1", "src/b.ts", 5),
+  ];
+
+  const slice = makeSlice({ flows: [f1, f2], failures: [fail1] });
+  const projection = makeProjection(slice, claims);
+  const result = buildScenarioDraftFromSlice(projection);
+
+  assert.notEqual(result, null);
+  assert.equal(result!.draft.cases.length, 2);
+  // Verify no self-reference in any case
+  for (const c of result!.draft.cases) {
+    const conditionIds = c.conditionFactRefs.map((r) => r.factId);
+    const observationIds = c.observationFactRefs.map((r) => r.factId);
+    for (const obsId of observationIds) {
+      assert.ok(!conditionIds.includes(obsId), `Case ${c.id} has same fact in condition and observation`);
+    }
+  }
+});
