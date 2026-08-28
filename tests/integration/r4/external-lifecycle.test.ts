@@ -39,7 +39,7 @@ test("installed CLI closes the external acquire-refresh lifecycle and preserves 
     await copyExternalFixture(workspace.targetRepository);
     const installed = await installPackedLegora(workspace);
 
-    const missing = await runInstalledLegora(installed, workspace.targetRepository, ["entry", "request routing"]);
+    const missing = await runInstalledLegora(installed, workspace.targetRepository, ["entry", "--json", "request routing"]);
     assert.equal(missing.exitCode, 3, missing.stderr || missing.stdout);
     assert.equal((missing.data as any).status, "KNOWLEDGE_NOT_FOUND");
     assert.equal((missing.data as any).nextAction?.type, "ACQUIRE_KNOWLEDGE");
@@ -53,7 +53,7 @@ test("installed CLI closes the external acquire-refresh lifecycle and preserves 
     assert.equal(acquire.exitCode, 0, acquire.stderr || acquire.stdout);
     assert.equal((acquire.data as any).status, "ACQUIRED");
 
-    const ready = await runInstalledLegora(installed, workspace.targetRepository, ["entry", "request routing"]);
+    const ready = await runInstalledLegora(installed, workspace.targetRepository, ["entry", "--json", "request routing"]);
     assert.equal(ready.exitCode, 0, ready.stderr || ready.stdout);
     assert.equal((ready.data as any).status, "READY");
     assert.equal((ready.data as any).behaviorSlice?.owner, "LEGORA");
@@ -65,7 +65,7 @@ test("installed CLI closes the external acquire-refresh lifecycle and preserves 
       "utf8",
     );
 
-    const stale = await runInstalledLegora(installed, workspace.targetRepository, ["entry", "request routing"]);
+    const stale = await runInstalledLegora(installed, workspace.targetRepository, ["entry", "--json", "request routing"]);
     assert.equal(stale.exitCode, 4, stale.stderr || stale.stdout);
     assert.equal((stale.data as any).status, "KNOWLEDGE_STALE");
     assert.equal((stale.data as any).nextAction?.type, "REFRESH_KNOWLEDGE");
@@ -92,7 +92,7 @@ test("installed CLI closes the external acquire-refresh lifecycle and preserves 
       assert.equal(record.activeEvidence[0].snippet.includes('path === "/login"'), true);
     }
 
-    const readyAgain = await runInstalledLegora(installed, workspace.targetRepository, ["entry", "request routing"]);
+    const readyAgain = await runInstalledLegora(installed, workspace.targetRepository, ["entry", "--json", "request routing"]);
     assert.equal(readyAgain.exitCode, 0, readyAgain.stderr || readyAgain.stdout);
     assert.equal((readyAgain.data as any).status, "READY");
     assert.equal((readyAgain.data as any).nextAction, null);
