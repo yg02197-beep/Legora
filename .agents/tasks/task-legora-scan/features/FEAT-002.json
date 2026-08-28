@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Implement the legora scan command: repository inventory collection via git ls-files, knowledge coverage mapping (covered/stale/uncovered), module-level grouping, CLI integration with --depth and --json flags, human-readable and JSON output, and comprehensive unit tests.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create src/scan/contracts.ts defining types: CoverageStatus ('covered'|'stale'|'uncovered'), FileInventoryEntry ({filePath, coverageStatus}), ModuleSummary ({module, total, covered, stale, uncovered, files}), ScanResult ({totalFiles, coveredFiles, staleFiles, uncoveredFiles, modules, files, depth})",
     "Create src/scan/inventory.ts with function collectRepositoryInventory(repositoryRoot): uses child_process.execFile to run `git ls-files` (tracked files only). Filters out common non-source patterns (.git/, node_modules/, etc). Returns string[] of relative file paths.",
@@ -30,5 +30,5 @@
     "npm test"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 210 tests pass (15 new scan tests). Typecheck clean. Build produces dist/. Scan command integrated into CLI dispatch with --depth (file|module) and --json flags. Coverage correctly classifies files as covered/stale/uncovered using freshness checks. Module grouping aggregates by directory (path.dirname). Freshness cache avoids redundant checks for the same record."
 }
