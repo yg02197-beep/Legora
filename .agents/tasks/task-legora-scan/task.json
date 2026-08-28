@@ -1,7 +1,14 @@
 {
   "task_id": "task-legora-scan",
   "task_description": "Implement `legora scan` command: repository inventory collection (git ls-files), knowledge coverage mapping (covered/stale/uncovered), module-level grouping, human-readable + JSON output, CLI integration, and comprehensive unit tests.",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001", "FEAT-002"],
-  "blocked_reason": null
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run typecheck: 0 errors. npm test: 210/210 pass (15 new scan tests). npm run build: success. Tests cover all key scenarios: CURRENT->covered, STALE->stale, UNKNOWN->stale (fail-closed), no-reference->uncovered, module grouping, CLI integration with --json and --depth flags."
+  }
 }
