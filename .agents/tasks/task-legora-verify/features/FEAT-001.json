@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Create the scenario-draft-from-slice bridge and the verify CLI command with human-readable rendering",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1: Create src/core/scenario-from-slice.ts - a bridge module that takes a KnowledgeProjectionResult and auto-generates a CausalScenarioDraft + ScenarioInputProjection[] from the BehaviorSlice. The algorithm: (a) Find constraints and failures facts that pass the executable-evidence-gate (all requiredEvidenceClaimIds are CONFIRMED). (b) Use constraints as conditions and flows/effects as observations to build at least 2 distinct cases. If constraints.length >= 2, pair each constraint with a different observation (flow or effect). If only 1 constraint exists but failures.length >= 1, use the constraint as condition for case 1 (normal flow observation) and the failure as condition for case 2 (failure observation). (c) If fewer than 2 valid cases can be built, return null. (d) The sliceRef should be 'native' to keep it simple (single projection with the full BehaviorSlice). Export: buildScenarioDraftFromSlice(projection: KnowledgeProjectionResult): { draft: CausalScenarioDraft, projections: ScenarioInputProjection[] } | null",
     "Step 2: Create src/verify/service.ts - the verify service module. Export runLegoraVerify({ repositoryRoot, flowRecordId, answerId? }) -> VerifyResult. The service: (1) reads knowledge records from store, (2) finds the flow record (exit 3 if not found), (3) checks it's a BEHAVIOR_FLOW structure (exit 2 if not), (4) runs freshness check (exit 4 if STALE, exit 5 if UNKNOWN), (5) calls projectKnowledgeBehaviorSlice to get the BehaviorSlice + evidenceClaims, (6) calls buildScenarioDraftFromSlice, (7) if null -> exit 6 (evidence insufficient), (8) validates the draft via validateCausalScenarioDraft, (9) picks the first case and calls buildPredictionChallenge, (10) if challenge is null -> exit 6, (11) if no answerId: return challenge data with status CHALLENGE_READY, (12) if answerId: call evaluatePrediction and return result with status CORRECT or INCORRECT. The VerifyResult type should include: status, challenge?, predictionResult?, evidenceClaims?, reason?",
@@ -26,5 +26,5 @@
     "npm run build"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 230 tests pass (210 existing + 20 new). Typecheck and build both pass cleanly. The scenario-from-slice bridge handles 4 strategies: (1) 2+ constraints with 2+ observations, (2) 2+ constraints with 1 observation + failure, (3) 1 constraint with flow + failure, (4) no constraints with flow + failure using a flow fact as condition. The verify service validates freshness before projection. The projector populates constraints from 'guards' relationships to 'invariant' entities, and failures from 'triggers' relationships to 'failure-point' entities."
 }
