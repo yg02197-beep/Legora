@@ -20,7 +20,7 @@ import {
 import { readKnowledgeRecords } from "../repository-knowledge/store.ts";
 import { resolveLegoraPackageRoot } from "../skills/canonical.ts";
 import { computeScanCoverage } from "../scan/coverage.ts";
-import { renderBootstrapResult, renderDoctorResult, renderScanResult } from "./render.ts";
+import { renderBootstrapResult, renderDoctorResult, renderEntryResult, renderScanResult } from "./render.ts";
 
 export interface CliCommandResult {
   exitCode: number;
@@ -64,6 +64,7 @@ interface ParsedEntryOptions {
   question: string;
   candidateRecordId?: string;
   candidatesRejected?: boolean;
+  json: boolean;
 }
 
 function defaultHost(): HostEnvironment {
@@ -141,6 +142,7 @@ function parseDoctorOptions(argv: readonly string[]): ParsedDoctorOptions | null
 function parseEntryOptions(argv: readonly string[]): ParsedEntryOptions | null {
   let candidateRecordId: string | undefined;
   let candidatesRejected = false;
+  let json = false;
   const questionParts: string[] = [];
   for (let index = 1; index < argv.length; index += 1) {
     const token = argv[index];
@@ -157,12 +159,18 @@ function parseEntryOptions(argv: readonly string[]): ParsedEntryOptions | null {
       candidatesRejected = true;
       continue;
     }
+    if (token === "--json") {
+      if (json) return null;
+      json = true;
+      continue;
+    }
     questionParts.push(token);
   }
   const question = questionParts.join(" ").trim();
   if (!question) return null;
   return {
     question,
+    json,
     ...(candidateRecordId === undefined ? {} : { candidateRecordId }),
     ...(candidatesRejected ? { candidatesRejected: true } : {}),
   };
@@ -324,6 +332,7 @@ export async function runCliCommand(
     return {
       exitCode: statusExitCode(result.status),
       data: { command: "entry", ...result },
+      stdout: options.json ? undefined : renderEntryResult(result),
     };
   }
 

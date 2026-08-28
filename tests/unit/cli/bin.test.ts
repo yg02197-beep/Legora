@@ -64,7 +64,7 @@ test("CLI process uses cwd as repository root for a successful entry command", a
   const binPath = path.join(projectRoot, "src", "cli", "bin.mjs");
   const child = spawnSync(
     process.execPath,
-    [binPath, "entry", "request routing"],
+    [binPath, "entry", "--json", "request routing"],
     { cwd: repositoryRoot, encoding: "utf8" },
   );
 

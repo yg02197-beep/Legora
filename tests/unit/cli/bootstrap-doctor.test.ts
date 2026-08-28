@@ -158,7 +158,7 @@ test("bootstrap and doctor reject unsupported or conflicting option syntax", asy
 test("existing entry command remains structured JSON data with no stdout override", async () => {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), "legora-cli-entry-r5-"));
   try {
-    const result = await runCliCommand(["entry", "request routing"], repo);
+    const result = await runCliCommand(["entry", "--json", "request routing"], repo);
     assert.equal(result.exitCode, 3);
     assert.equal(result.data.status, "KNOWLEDGE_NOT_FOUND");
     assert.equal(result.stdout, undefined);
