@@ -26,5 +26,5 @@
     "npm run build"
   ],
   "blocked_reason": null,
-  "findings": "All 230 tests pass (210 existing + 20 new). Typecheck and build both pass cleanly. The scenario-from-slice bridge handles 4 strategies: (1) 2+ constraints with 2+ observations, (2) 2+ constraints with 1 observation + failure, (3) 1 constraint with flow + failure, (4) no constraints with flow + failure using a flow fact as condition. The verify service validates freshness before projection. The projector populates constraints from 'guards' relationships to 'invariant' entities, and failures from 'triggers' relationships to 'failure-point' entities."
+  "findings": "All 234 tests pass (210 existing + 24 new). Typecheck and build both pass cleanly. Review fixes applied: (1) Added INVALID_CHOICE status with pre-validation of choice ID before evaluatePrediction call, mapped to exit code 2. (2) Fixed strategy-4 condition/observation overlap by finding an observation different from the condition fact. (3) Added tests for invalid choice ID in both service and CLI layers, and tests verifying no self-referential cases in strategy-4. Freshness check scoped to flow record only was acknowledged as acceptable (matches entry command pattern)."
 }
