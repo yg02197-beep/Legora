@@ -1,0 +1,7 @@
+{
+  "task_id": "task-legora-scan",
+  "task_description": "Implement `legora scan` command: repository inventory collection (git ls-files), knowledge coverage mapping (covered/stale/uncovered), module-level grouping, human-readable + JSON output, CLI integration, and comprehensive unit tests.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
