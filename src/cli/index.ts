@@ -486,4 +486,3 @@ export async function runCliCommand(
   return usageError("Unknown Legora command.");
 }
 
-export { USAGE as LEGORA_CLI_USAGE };
