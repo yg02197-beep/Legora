@@ -107,6 +107,35 @@ test("managed-copy inspection distinguishes absent, current, and packaged update
   }
 });
 
+test("managed-copy inspection surfaces the installed package version for current and outdated copies", async () => {
+  const older = await makeCanonical("v1\n");
+  const newer = await makeCanonical("v2\n");
+  const home = await fs.mkdtemp(path.join(os.tmpdir(), "legora-managed-installed-version-"));
+  const target = path.join(home, ".agents", "skills", "legora");
+  try {
+    await writeManagedTarget(target, older.snapshot, "0.1.0");
+
+    // Inspecting the installed v1 copy against the same snapshot => NO_CHANGE with its version.
+    assert.deepEqual(await inspectManagedCopy(target, older.snapshot), {
+      state: "NO_CHANGE",
+      reason: "CURRENT_MANAGED_COPY",
+      installedPackageVersion: "0.1.0",
+    });
+
+    // Inspecting the installed v1 copy against a newer v2 snapshot => MANAGED_UPDATE that still
+    // reports the OLD installed manifest version, not the current one.
+    const outdated = await inspectManagedCopy(target, newer.snapshot);
+    assert.deepEqual(outdated, {
+      state: "MANAGED_UPDATE",
+      reason: "PACKAGED_PAYLOAD_CHANGED",
+      installedPackageVersion: "0.1.0",
+    });
+    assert.equal(outdated.installedPackageVersion, "0.1.0");
+  } finally {
+    await cleanup(older.parent, newer.parent, home);
+  }
+});
+
 test("unowned identical-looking target is conflict and is never adopted", async () => {
   const canonical = await makeCanonical();
   const home = await fs.mkdtemp(path.join(os.tmpdir(), "legora-managed-unowned-"));
