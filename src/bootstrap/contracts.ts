@@ -29,6 +29,7 @@ export type ManagedCopyState = "ABSENT" | "NO_CHANGE" | "MANAGED_UPDATE" | "CONF
 
 export interface ManagedCopyInspection {
   state: ManagedCopyState;
+  installedPackageVersion?: string;
   reason:
     | "TARGET_ABSENT"
     | "CURRENT_MANAGED_COPY"

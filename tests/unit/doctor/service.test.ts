@@ -6,9 +6,23 @@ import path from "node:path";
 
 import { doctorLegora } from "../../../src/doctor/service.ts";
 import { loadCanonicalSkillSnapshot } from "../../../src/skills/canonical.ts";
+import type { CanonicalSkillSnapshot } from "../../../src/skills/canonical.ts";
 import { publishManagedCopy } from "../../../src/bootstrap/managed-copy.ts";
 import type { HostEnvironment } from "../../../src/bootstrap/contracts.ts";
 import type { LocalCommandRunner } from "../../../src/doctor/contracts.ts";
+
+const SKILL_PREFIX = `---\nname: legora\ndescription: Understand repository behavior from current source evidence. Use for code-flow questions.\nmetadata:\n  legora-managed: "true"\n  legora-skill-schema: "1"\n---\n# Legora\n`;
+
+async function makeCanonical(suffix: string): Promise<{ parent: string; root: string; snapshot: CanonicalSkillSnapshot }> {
+  const parent = await fs.mkdtemp(path.join(os.tmpdir(), "legora-doctor-canonical-"));
+  const root = path.join(parent, "legora");
+  await fs.mkdir(path.join(root, "references"), { recursive: true });
+  await fs.writeFile(path.join(root, "SKILL.md"), `${SKILL_PREFIX}${suffix}`);
+  await fs.writeFile(path.join(root, "references", "explain.md"), "# Explain\n");
+  await fs.writeFile(path.join(root, "references", "explore.md"), "# Explore\n");
+  await fs.writeFile(path.join(root, "references", "verify.md"), "# Verify\n");
+  return { parent, root, snapshot: await loadCanonicalSkillSnapshot(root) };
+}
 
 async function makeBin(commands: readonly string[]): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "legora-doctor-bin-"));
@@ -126,6 +140,41 @@ test("Codex, OpenCode, and Claude current managed installs remain NOT_PROBED for
   }
 });
 
+test("outdated managed install is OUTDATED (not FAIL) and NOT_READY with both versions surfaced", async () => {
+  const older = await makeCanonical("v1\n");
+  const newer = await makeCanonical("v2\n");
+  const home = await fs.mkdtemp(path.join(os.tmpdir(), "legora-doctor-outdated-"));
+  const bin = await makeBin(["codex"]);
+  const target = path.join(home, ".agents", "skills", "legora");
+  try {
+    // Install the OLD (v1) managed copy at the codex target.
+    const receipt = await publishManagedCopy({ target, snapshot: older.snapshot, packageVersion: "0.1.0" });
+    await receipt.finalize();
+
+    // Run doctor against the CURRENT (v2) snapshot; payload digests differ => MANAGED_UPDATE.
+    const result = await doctorLegora({
+      requested: ["codex"],
+      host: windowsHost(home, bin),
+      canonicalSkillRoot: newer.root,
+      packageVersion: "0.2.0",
+    });
+
+    assert.equal(result.status, "NOT_READY");
+    assert.equal(result.canonicalSkillFormat, "PASS");
+    const agent = result.agents[0];
+    assert.equal(agent.installTarget, "PASS");
+    assert.equal(agent.managedDigest, "OUTDATED");
+    assert.notEqual(agent.managedDigest, "FAIL");
+    assert.equal(agent.installedVersion, "0.1.0");
+    assert.equal(agent.currentVersion, "0.2.0");
+  } finally {
+    await fs.rm(home, { recursive: true, force: true });
+    await fs.rm(bin, { recursive: true, force: true });
+    await fs.rm(older.parent, { recursive: true, force: true });
+    await fs.rm(newer.parent, { recursive: true, force: true });
+  }
+});
+
 test("Gemini discovery is CONFIRMED only for enabled Legora at the managed location", async () => {
   const home = await fs.mkdtemp(path.join(os.tmpdir(), "legora-doctor-gemini-"));
   const bin = await makeBin(["gemini"]);
@@ -215,6 +264,7 @@ test("conflict target is NOT_READY and Gemini probe is not executed", async () =
     assert.equal(result.status, "NOT_READY");
     assert.equal(result.agents[0].installTarget, "FAIL");
     assert.equal(result.agents[0].managedDigest, "FAIL");
+    assert.notEqual(result.agents[0].managedDigest, "OUTDATED");
     assert.equal(result.agents[0].nativeDiscovery, "NOT_PROBED");
     assert.equal(calls, 0);
   } finally {

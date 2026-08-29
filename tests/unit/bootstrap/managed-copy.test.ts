@@ -100,10 +100,39 @@ test("managed-copy inspection distinguishes absent, current, and packaged update
   try {
     assert.deepEqual(await inspectManagedCopy(target, current.snapshot), { state: "ABSENT", reason: "TARGET_ABSENT" });
     await writeManagedTarget(target, current.snapshot);
-    assert.deepEqual(await inspectManagedCopy(target, current.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY" });
-    assert.deepEqual(await inspectManagedCopy(target, next.snapshot), { state: "MANAGED_UPDATE", reason: "PACKAGED_PAYLOAD_CHANGED" });
+    assert.deepEqual(await inspectManagedCopy(target, current.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY", installedPackageVersion: "0.1.0" });
+    assert.deepEqual(await inspectManagedCopy(target, next.snapshot), { state: "MANAGED_UPDATE", reason: "PACKAGED_PAYLOAD_CHANGED", installedPackageVersion: "0.1.0" });
   } finally {
     await cleanup(current.parent, next.parent, home);
+  }
+});
+
+test("managed-copy inspection surfaces the installed package version for current and outdated copies", async () => {
+  const older = await makeCanonical("v1\n");
+  const newer = await makeCanonical("v2\n");
+  const home = await fs.mkdtemp(path.join(os.tmpdir(), "legora-managed-installed-version-"));
+  const target = path.join(home, ".agents", "skills", "legora");
+  try {
+    await writeManagedTarget(target, older.snapshot, "0.1.0");
+
+    // Inspecting the installed v1 copy against the same snapshot => NO_CHANGE with its version.
+    assert.deepEqual(await inspectManagedCopy(target, older.snapshot), {
+      state: "NO_CHANGE",
+      reason: "CURRENT_MANAGED_COPY",
+      installedPackageVersion: "0.1.0",
+    });
+
+    // Inspecting the installed v1 copy against a newer v2 snapshot => MANAGED_UPDATE that still
+    // reports the OLD installed manifest version, not the current one.
+    const outdated = await inspectManagedCopy(target, newer.snapshot);
+    assert.deepEqual(outdated, {
+      state: "MANAGED_UPDATE",
+      reason: "PACKAGED_PAYLOAD_CHANGED",
+      installedPackageVersion: "0.1.0",
+    });
+    assert.equal(outdated.installedPackageVersion, "0.1.0");
+  } finally {
+    await cleanup(older.parent, newer.parent, home);
   }
 });
 
@@ -196,13 +225,13 @@ test("fresh publication can be rolled back or finalized without residue", async 
   try {
     const first = await publishManagedCopy({ target, snapshot: canonical.snapshot, packageVersion: "0.1.0" });
     assert.equal(first.changed, true);
-    assert.deepEqual(await inspectManagedCopy(target, canonical.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY" });
+    assert.deepEqual(await inspectManagedCopy(target, canonical.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY", installedPackageVersion: "0.1.0" });
     await first.rollback();
     assert.equal(await treeBytes(target), null);
 
     const second = await publishManagedCopy({ target, snapshot: canonical.snapshot, packageVersion: "0.1.0" });
     await second.finalize();
-    assert.deepEqual(await inspectManagedCopy(target, canonical.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY" });
+    assert.deepEqual(await inspectManagedCopy(target, canonical.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY", installedPackageVersion: "0.1.0" });
     assert.equal((await fs.readdir(path.dirname(target))).some((name) => name.includes(".legora-stage-") || name.includes(".legora-backup-")), false);
   } finally {
     await cleanup(canonical.parent, home);
@@ -219,13 +248,13 @@ test("managed update rollback restores exact prior bytes and finalize retains th
     const before = await treeBytes(target);
 
     const update = await publishManagedCopy({ target, snapshot: next.snapshot, packageVersion: "0.2.0" });
-    assert.deepEqual(await inspectManagedCopy(target, next.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY" });
+    assert.deepEqual(await inspectManagedCopy(target, next.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY", installedPackageVersion: "0.2.0" });
     await update.rollback();
     assert.deepEqual(await treeBytes(target), before);
 
     const committed = await publishManagedCopy({ target, snapshot: next.snapshot, packageVersion: "0.2.0" });
     await committed.finalize();
-    assert.deepEqual(await inspectManagedCopy(target, next.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY" });
+    assert.deepEqual(await inspectManagedCopy(target, next.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY", installedPackageVersion: "0.2.0" });
   } finally {
     await cleanup(current.parent, next.parent, home);
   }

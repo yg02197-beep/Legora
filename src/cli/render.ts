@@ -1,6 +1,6 @@
 import type { BootstrapResult } from "../bootstrap/service.ts";
 import type { BehaviorFact, EvidenceClaim, EvidenceConfidence } from "../core/contracts.ts";
-import type { DoctorResult } from "../doctor/contracts.ts";
+import type { AgentDoctorResult, DoctorResult } from "../doctor/contracts.ts";
 import type { LegoraEntryCandidate, LegoraEntryFreshness, LegoraEntryResult } from "../entry.ts";
 import type { KnowledgeFreshnessIssue } from "../repository-knowledge/freshness.ts";
 import type { ScanResult } from "../scan/contracts.ts";
@@ -37,6 +37,15 @@ export function renderBootstrapResult(result: BootstrapResult): string {
   return `${lines.join("\n")}\n`;
 }
 
+function renderDigest(agent: AgentDoctorResult): string {
+  if (agent.managedDigest !== "OUTDATED") return agent.managedDigest;
+  const parts: string[] = [];
+  if (agent.installedVersion) parts.push(`installed v${agent.installedVersion}`);
+  if (agent.currentVersion) parts.push(`current v${agent.currentVersion}`);
+  const versionInfo = parts.length > 0 ? `${parts.join(", ")} - ` : "";
+  return `OUTDATED (${versionInfo}run 'legora bootstrap --agent ${agent.agent}' to update)`;
+}
+
 export function renderDoctorResult(result: DoctorResult): string {
   const lines = [
     `Legora doctor: ${result.status}`,
@@ -44,7 +53,7 @@ export function renderDoctorResult(result: DoctorResult): string {
   ];
   for (const agent of result.agents) {
     lines.push(
-      `${labelAgent(agent.agent)}  executable=${agent.executable}  install=${agent.installTarget}  digest=${agent.managedDigest}  native_discovery=${agent.nativeDiscovery}`,
+      `${labelAgent(agent.agent)}  executable=${agent.executable}  install=${agent.installTarget}  digest=${renderDigest(agent)}  native_discovery=${agent.nativeDiscovery}`,
     );
   }
   return `${lines.join("\n")}\n`;

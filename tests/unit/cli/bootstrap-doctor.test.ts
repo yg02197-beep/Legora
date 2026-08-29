@@ -6,8 +6,22 @@ import path from "node:path";
 
 import { runCliCommand } from "../../../src/cli/index.ts";
 import { loadCanonicalSkillSnapshot } from "../../../src/skills/canonical.ts";
+import type { CanonicalSkillSnapshot } from "../../../src/skills/canonical.ts";
 import { publishManagedCopy } from "../../../src/bootstrap/managed-copy.ts";
 import type { HostEnvironment } from "../../../src/bootstrap/contracts.ts";
+
+const SKILL_PREFIX = `---\nname: legora\ndescription: Understand repository behavior from current source evidence. Use for code-flow questions.\nmetadata:\n  legora-managed: "true"\n  legora-skill-schema: "1"\n---\n# Legora\n`;
+
+async function makeCanonical(suffix: string): Promise<{ parent: string; root: string; snapshot: CanonicalSkillSnapshot }> {
+  const parent = await fs.mkdtemp(path.join(os.tmpdir(), "legora-cli-canonical-"));
+  const root = path.join(parent, "legora");
+  await fs.mkdir(path.join(root, "references"), { recursive: true });
+  await fs.writeFile(path.join(root, "SKILL.md"), `${SKILL_PREFIX}${suffix}`);
+  await fs.writeFile(path.join(root, "references", "explain.md"), "# Explain\n");
+  await fs.writeFile(path.join(root, "references", "explore.md"), "# Explore\n");
+  await fs.writeFile(path.join(root, "references", "verify.md"), "# Verify\n");
+  return { parent, root, snapshot: await loadCanonicalSkillSnapshot(root) };
+}
 
 function host(homeDir: string, binDir = ""): HostEnvironment {
   return {
@@ -121,6 +135,42 @@ test("doctor defaults to human output and --json preserves structured output", a
   } finally {
     await fs.rm(home, { recursive: true, force: true });
     await fs.rm(bin, { recursive: true, force: true });
+  }
+});
+
+test("doctor reports an outdated managed install with both versions and update guidance", async () => {
+  const older = await makeCanonical("v1\n");
+  const newer = await makeCanonical("v2\n");
+  const home = await fs.mkdtemp(path.join(os.tmpdir(), "legora-cli-doctor-outdated-"));
+  const bin = await makeBin(["codex"]);
+  try {
+    const receipt = await publishManagedCopy({
+      target: path.join(home, ".agents", "skills", "legora"),
+      snapshot: older.snapshot,
+      packageVersion: "0.1.0",
+    });
+    await receipt.finalize();
+
+    const result = await runCliCommand(["doctor", "--agent", "codex"], process.cwd(), {
+      host: host(home, bin),
+      packageVersion: "0.2.0",
+      canonicalSkillRoot: newer.root,
+    });
+
+    assert.equal(result.exitCode, 7);
+    assert.equal(result.data.status, "NOT_READY");
+    assert.equal(result.data.agents[0].managedDigest, "OUTDATED");
+    assert.equal(result.data.agents[0].installedVersion, "0.1.0");
+    assert.equal(result.data.agents[0].currentVersion, "0.2.0");
+    assert.match(result.stdout ?? "", /OUTDATED/);
+    assert.match(result.stdout ?? "", /0\.1\.0/);
+    assert.match(result.stdout ?? "", /0\.2\.0/);
+    assert.match(result.stdout ?? "", /legora bootstrap/);
+  } finally {
+    await fs.rm(home, { recursive: true, force: true });
+    await fs.rm(bin, { recursive: true, force: true });
+    await fs.rm(older.parent, { recursive: true, force: true });
+    await fs.rm(newer.parent, { recursive: true, force: true });
   }
 });
 

@@ -182,9 +182,9 @@ async function inspectManagedCopyWithOps(
 
   if (manifest.payloadDigest === snapshot.payloadDigest) {
     if (!snapshotManifestMatches(snapshot, manifest)) return { state: "CONFLICT", reason: "MANIFEST_INVALID" };
-    return { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY" };
+    return { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY", installedPackageVersion: manifest.packageVersion };
   }
-  return { state: "MANAGED_UPDATE", reason: "PACKAGED_PAYLOAD_CHANGED" };
+  return { state: "MANAGED_UPDATE", reason: "PACKAGED_PAYLOAD_CHANGED", installedPackageVersion: manifest.packageVersion };
 }
 
 function validateSnapshotIntegrity(snapshot: CanonicalSkillSnapshot): void {
