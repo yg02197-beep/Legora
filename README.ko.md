@@ -152,7 +152,7 @@ legora entry "Where is authentication enforced and what happens when it fails?"
 legora entry "Where is authentication enforced and what happens when it fails?" --json
 ```
 
-`--json` 출력은 기존의 구조화된 계약 그대로이고 바뀐 부분이 없어, 에이전트가
+`--json` 출력은 기존의 구조화된 형식 그대로이고 바뀐 부분이 없어, 에이전트가
 보는 동작은 하위 호환을 유지합니다.
 
 Entry는 답변을 만들어 내는 도구가 아니라 하나의 게이트입니다. 라이프사이클은
@@ -207,7 +207,7 @@ READY
 오직 `READY` 상태에서만 Legora가 근거로 뒷받침하는 Behavior Slice 출력을 낼 수
 있습니다.
 
-이식형 Skill로 사용하면 코딩 에이전트가 이 핸드셰이크를 대신 밟아 줍니다. Entry로
+이식형 Skill로 사용하면 코딩 에이전트가 이 핸드셰이크를 대신 처리해 줍니다. Entry로
 시작하고, 저장소 소스를 보기 전에 기존 지식부터 검토하며, 요청이 있을 때만
 acquisition이나 refresh를 제안하고, pre-READY 단계의 추측을 Legora의 확정된
 답변처럼 취급하지 않습니다.
@@ -216,8 +216,8 @@ acquisition이나 refresh를 제안하고, pre-READY 단계의 추측을 Legora�
 
 Legora는 이해 작업을 세 가지 기능으로 나눠 처리합니다:
 
-- **Explain**은 확인된 근거나 범위가 정해진 근거를 바탕으로 꼭 필요한 만큼의
-  멘탈 모델을 세웁니다.
+- **Explain**은 확인된 근거나 범위가 정해진 근거를 바탕으로 필요한 최소한의
+  멘탈 모델을 만듭니다.
 - **Explore**는 근거에 기반한 사례로 동작을 살펴봅니다. Microworld는 기본 답변
   형식이 아니라 Explore 기능의 하나입니다.
 - **Verify**는 멘탈 모델이 예측이나 비슷한 사례로 이어진다는 것을 눈으로 확인할
@@ -256,7 +256,7 @@ legora verify --answer <choice-id> <flow-record-id>
 Verify는 fail-closed로 동작합니다. 대상 레코드가 behavior flow가 아니거나, `READY`
 상태가 아니거나(최신성이 stale이거나 unknown), 서로 구별되는 선택지로 챌린지를
 만들 만큼 근거가 충분하지 않으면, Legora는 퀴즈를 억지로 지어내지 않고 만들기를
-거부합니다. Legora의 다른 기능과 마찬가지로, 예측은 포착된 근거에 뒷받침될 때만
+거부합니다. Legora의 다른 기능과 마찬가지로, 예측은 포착된 근거로 뒷받침될 때만
 내놓습니다.
 
 ## 저장소 스캔
@@ -309,7 +309,7 @@ Repository Knowledge는 active evidence와 historical evidence 개정본을 따�
 바뀌거나 검증할 수 없으면 fail closed로 처리합니다.
 
 코딩 에이전트는 근거를 *어디서* 포착할지 제안할 수 있지만, 그 제안을 검증하고
-소스 스니펫을 실제로 포착하는 일은 Legora가 직접 합니다. 권위 있는 근거 필드는
+소스 스니펫을 실제로 포착하는 일은 Legora가 직접 합니다. 근거로 확정되는 값은
 단지 에이전트가 적어 냈다는 이유만으로 받아들여지지 않습니다.
 
 에이전트가 일반적으로 넘기는 acquisition 입력은 저장되는 Knowledge Record 계약보다
