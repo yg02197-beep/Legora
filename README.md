@@ -75,7 +75,16 @@ legora
 ```
 
 The command intentionally returns usage information when called without a
-subcommand.
+subcommand. You can also request help explicitly:
+
+```powershell
+legora --help
+```
+
+`legora`, `legora --help`, `legora -h`, and `legora help` all print the
+human-readable command list and exit `0`. An unknown or mistyped command still
+returns a usage error with a non-zero exit code, so an explicit help request is
+never confused with a mistake.
 
 ## Coding-agent setup
 
