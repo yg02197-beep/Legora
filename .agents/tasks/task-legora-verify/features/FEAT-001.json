@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Create the scenario-draft-from-slice bridge and the verify CLI command with human-readable rendering",
+  "status": "completed",
+  "steps": [
+    "Step 1: Create src/core/scenario-from-slice.ts - a bridge module that takes a KnowledgeProjectionResult and auto-generates a CausalScenarioDraft + ScenarioInputProjection[] from the BehaviorSlice. The algorithm: (a) Find constraints and failures facts that pass the executable-evidence-gate (all requiredEvidenceClaimIds are CONFIRMED). (b) Use constraints as conditions and flows/effects as observations to build at least 2 distinct cases. If constraints.length >= 2, pair each constraint with a different observation (flow or effect). If only 1 constraint exists but failures.length >= 1, use the constraint as condition for case 1 (normal flow observation) and the failure as condition for case 2 (failure observation). (c) If fewer than 2 valid cases can be built, return null. (d) The sliceRef should be 'native' to keep it simple (single projection with the full BehaviorSlice). Export: buildScenarioDraftFromSlice(projection: KnowledgeProjectionResult): { draft: CausalScenarioDraft, projections: ScenarioInputProjection[] } | null",
+    "Step 2: Create src/verify/service.ts - the verify service module. Export runLegoraVerify({ repositoryRoot, flowRecordId, answerId? }) -> VerifyResult. The service: (1) reads knowledge records from store, (2) finds the flow record (exit 3 if not found), (3) checks it's a BEHAVIOR_FLOW structure (exit 2 if not), (4) runs freshness check (exit 4 if STALE, exit 5 if UNKNOWN), (5) calls projectKnowledgeBehaviorSlice to get the BehaviorSlice + evidenceClaims, (6) calls buildScenarioDraftFromSlice, (7) if null -> exit 6 (evidence insufficient), (8) validates the draft via validateCausalScenarioDraft, (9) picks the first case and calls buildPredictionChallenge, (10) if challenge is null -> exit 6, (11) if no answerId: return challenge data with status CHALLENGE_READY, (12) if answerId: call evaluatePrediction and return result with status CORRECT or INCORRECT. The VerifyResult type should include: status, challenge?, predictionResult?, evidenceClaims?, reason?",
+    "Step 3: Add the verify command to src/cli/index.ts. Parse argv for 'verify' command: detect --answer <choice-id> flag and the positional <flow-record-id>. Also detect --json. Call runLegoraVerify with appropriate args. Map result status to exit codes per spec (0=success/correct, 1=incorrect, 2=usage, 3=not found, 4=stale, 5=unknown, 6=insufficient evidence). Add 'legora verify <flow-record-id> [--json]' and 'legora verify --answer <choice-id> <flow-record-id> [--json]' to USAGE string.",
+    "Step 4: Add renderVerifyResult(result) to src/cli/render.ts. For CHALLENGE_READY: render the human-readable quiz with box-drawing header, conditions, question, lettered choices (a/b/c...), and the 'legora verify --answer' hint. For CORRECT: render checkmark, selected choice, correct answer, and evidence anchors with confidence. For INCORRECT: render X mark, selected choice, correct answer, explanation text, and evidence anchors. For error statuses (STALE/UNKNOWN/NOT_FOUND/INSUFFICIENT_EVIDENCE): render appropriate Korean error messages per spec.",
+    "Step 5: Create tests/unit/verify/verify-service.test.ts - Unit tests for the verify service. Test cases: (a) valid flow record with 2+ constraints produces a CHALLENGE_READY result with choices, (b) answering correctly returns CORRECT, (c) answering incorrectly returns INCORRECT, (d) non-existent record returns NOT_FOUND, (e) non-flow record returns usage error, (f) stale freshness returns STALE, (g) insufficient evidence (only 1 executable fact) returns INSUFFICIENT_EVIDENCE. Use temp directories with writeKnowledgeRecord to set up fixtures.",
+    "Step 6: Create tests/unit/verify/verify-cli.test.ts - CLI integration tests for the verify command. Test: (a) verify command with valid flow record returns exit 0 and human-readable stdout, (b) verify --json returns structured data with no stdout, (c) verify --answer with correct choice returns exit 0, (d) verify --answer with wrong choice returns exit 1, (e) verify with non-existent record returns exit 3, (f) verify with stale knowledge returns exit 4, (g) verify with insufficient evidence returns exit 6, (h) invalid usage returns exit 2.",
+    "Step 7: Create tests/unit/core/scenario-from-slice.test.ts - Unit tests for the bridge module. Test: (a) slice with 2+ executable constraints produces a valid draft with 2 cases, (b) slice with 1 constraint + 1 failure produces 2 cases, (c) slice with no executable facts returns null, (d) slice with only 1 possible observation returns null (cannot make distinct choices), (e) non-CONFIRMED evidence facts are excluded."
+  ],
+  "acceptance_criteria": [
+    "npm run typecheck passes with zero errors",
+    "npm test passes all existing 210 tests plus new verify tests",
+    "npm run build succeeds",
+    "legora verify <flow-record-id> produces a human-readable quiz when evidence is sufficient",
+    "legora verify --answer <choice-id> <flow-record-id> evaluates the prediction correctly",
+    "Exit codes match the specification: 0 (success/correct), 1 (incorrect), 2 (usage), 3 (not found), 4 (stale), 5 (unknown), 6 (insufficient evidence)"
+  ],
+  "verification": [
+    "npm run typecheck",
+    "npm test",
+    "npm run build"
+  ],
+  "blocked_reason": null,
+  "findings": "All 234 tests pass (210 existing + 24 new). Typecheck and build both pass cleanly. Review fixes applied: (1) Added INVALID_CHOICE status with pre-validation of choice ID before evaluatePrediction call, mapped to exit code 2. (2) Fixed strategy-4 condition/observation overlap by finding an observation different from the condition fact. (3) Added tests for invalid choice ID in both service and CLI layers, and tests verifying no self-referential cases in strategy-4. Freshness check scoped to flow record only was acknowledged as acceptable (matches entry command pattern)."
+}

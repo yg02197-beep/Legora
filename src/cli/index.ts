@@ -20,7 +20,8 @@ import {
 import { readKnowledgeRecords } from "../repository-knowledge/store.ts";
 import { resolveLegoraPackageRoot } from "../skills/canonical.ts";
 import { computeScanCoverage } from "../scan/coverage.ts";
-import { renderBootstrapResult, renderDoctorResult, renderEntryResult, renderScanResult } from "./render.ts";
+import { runLegoraVerify } from "../verify/service.ts";
+import { renderBootstrapResult, renderDoctorResult, renderEntryResult, renderScanResult, renderVerifyResult } from "./render.ts";
 
 export interface CliCommandResult {
   exitCode: number;
@@ -37,6 +38,8 @@ const USAGE = [
   "legora knowledge query <question>",
   "legora knowledge status",
   "legora scan [--depth file|module] [--json]",
+  "legora verify <flow-record-id> [--json]",
+  "legora verify --answer <choice-id> <flow-record-id> [--json]",
   "legora bootstrap [--agent codex|claude|gemini|opencode|all] [--dry-run] [--json]",
   "legora doctor [--agent codex|claude|gemini|opencode] [--json]",
 ].join("\n");
@@ -322,6 +325,68 @@ export async function runCliCommand(
       exitCode: 0,
       data: { command: "scan", ...result },
       stdout: json ? undefined : renderScanResult(result),
+    };
+  }
+
+  if (argv[0] === "verify") {
+    let answerId: string | undefined;
+    let json = false;
+    let flowRecordId: string | undefined;
+    for (let index = 1; index < argv.length; index += 1) {
+      const token = argv[index];
+      if (token === "--answer") {
+        if (answerId !== undefined || index + 1 >= argv.length) return usageError("--answer requires a choice-id.");
+        answerId = argv[index + 1];
+        index += 1;
+        continue;
+      }
+      if (token === "--json") {
+        if (json) return usageError("Duplicate --json flag.");
+        json = true;
+        continue;
+      }
+      if (token!.startsWith("-")) {
+        return usageError(`Unknown option: ${token}`);
+      }
+      if (flowRecordId !== undefined) {
+        return usageError("Only one flow-record-id is allowed.");
+      }
+      flowRecordId = token;
+    }
+    if (!flowRecordId) return usageError("verify requires a <flow-record-id>.");
+    const result = await runLegoraVerify({ repositoryRoot, flowRecordId, answerId });
+    let exitCode: number;
+    switch (result.status) {
+      case "CHALLENGE_READY":
+      case "CORRECT":
+        exitCode = 0;
+        break;
+      case "INCORRECT":
+        exitCode = 1;
+        break;
+      case "NOT_FLOW":
+      case "INVALID_CHOICE":
+        exitCode = 2;
+        break;
+      case "NOT_FOUND":
+        exitCode = 3;
+        break;
+      case "STALE":
+        exitCode = 4;
+        break;
+      case "UNKNOWN":
+        exitCode = 5;
+        break;
+      case "INSUFFICIENT_EVIDENCE":
+        exitCode = 6;
+        break;
+      default:
+        exitCode = 2;
+    }
+    return {
+      exitCode,
+      data: { command: "verify", flowRecordId, ...result },
+      stdout: json ? undefined : renderVerifyResult(result, flowRecordId),
     };
   }
 

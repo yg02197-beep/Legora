@@ -4,6 +4,7 @@ import type { DoctorResult } from "../doctor/contracts.ts";
 import type { LegoraEntryCandidate, LegoraEntryFreshness, LegoraEntryResult } from "../entry.ts";
 import type { KnowledgeFreshnessIssue } from "../repository-knowledge/freshness.ts";
 import type { ScanResult } from "../scan/contracts.ts";
+import type { VerifyResult } from "../verify/service.ts";
 
 function labelAgent(agent: string): string {
   if (agent === "codex") return "Codex";
@@ -280,4 +281,106 @@ export function renderEntryResult(result: LegoraEntryResult): string {
     case "KNOWLEDGE_UNKNOWN":
       return renderUnknownStatus(result);
   }
+}
+
+function choiceLetter(index: number): string {
+  return String.fromCharCode(97 + index);
+}
+
+export function renderVerifyResult(result: VerifyResult, flowRecordId: string): string {
+  if (result.status === "NOT_FOUND") {
+    return `Knowledge record '${flowRecordId}' was not found.\n`;
+  }
+
+  if (result.status === "NOT_FLOW") {
+    return `Knowledge record '${flowRecordId}' is not a behavior flow.\n`;
+  }
+
+  if (result.status === "STALE") {
+    return `퀴즈를 만들 수 없습니다: ${result.reason ?? "Knowledge is stale."}\n`;
+  }
+
+  if (result.status === "UNKNOWN") {
+    return `퀴즈를 만들 수 없습니다: ${result.reason ?? "Knowledge freshness is unknown."}\n`;
+  }
+
+  if (result.status === "INSUFFICIENT_EVIDENCE") {
+    return `퀴즈를 만들 수 없습니다 (증거 부족)\n`;
+  }
+
+  if (result.status === "INVALID_CHOICE") {
+    return `잘못된 선택입니다: ${result.reason ?? "Invalid choice ID."}\n`;
+  }
+
+  if (result.status === "CHALLENGE_READY") {
+    const challenge = result.challenge!;
+    const prompt = challenge.prompt;
+    const lines: string[] = [];
+    lines.push(`\u2500\u2500\u2500 Verify: ${prompt.question.replace(/^Predict the outcome when: /, "")} \u2500\u2500\u2500`);
+    lines.push("");
+    lines.push("조건:");
+    lines.push(`  ${prompt.question.replace(/^Predict the outcome when: /, "")}`);
+    lines.push("");
+    lines.push("질문:");
+    lines.push(`  ${prompt.question}`);
+    lines.push("");
+    for (let i = 0; i < prompt.choices.length; i++) {
+      lines.push(`  ${choiceLetter(i)}) ${prompt.choices[i]!.label}`);
+    }
+    lines.push("");
+    lines.push(`정답 확인:  legora verify --answer ${prompt.choices[0]!.id} ${flowRecordId}`);
+    return `${lines.join("\n")}\n`;
+  }
+
+  if (result.status === "CORRECT") {
+    const challenge = result.challenge!;
+    const predictionResult = result.predictionResult!;
+    const selectedChoice = challenge.prompt.choices.find((c) => c.id === predictionResult.receivedChoiceId);
+    const correctChoice = challenge.prompt.choices.find((c) => c.id === predictionResult.expectedChoiceId);
+    const lines: string[] = [];
+    lines.push("\u2713 CORRECT");
+    lines.push("");
+    lines.push(`  선택: ${selectedChoice?.label ?? predictionResult.receivedChoiceId}`);
+    lines.push(`  정답: ${correctChoice?.label ?? predictionResult.expectedChoiceId}`);
+    lines.push("");
+    lines.push("  이 동작의 근거:");
+    if (result.evidenceClaims) {
+      for (const claim of result.evidenceClaims) {
+        for (const anchor of claim.evidence) {
+          const lineRange = anchor.lineEnd
+            ? `${anchor.lineStart}-${anchor.lineEnd}`
+            : `${anchor.lineStart}`;
+          lines.push(`    ${anchor.filePath}:${lineRange} [${claim.confidence}]`);
+        }
+      }
+    }
+    return `${lines.join("\n")}\n`;
+  }
+
+  if (result.status === "INCORRECT") {
+    const challenge = result.challenge!;
+    const predictionResult = result.predictionResult!;
+    const selectedChoice = challenge.prompt.choices.find((c) => c.id === predictionResult.receivedChoiceId);
+    const correctChoice = challenge.prompt.choices.find((c) => c.id === predictionResult.expectedChoiceId);
+    const lines: string[] = [];
+    lines.push("\u2717 INCORRECT");
+    lines.push("");
+    lines.push(`  선택: ${selectedChoice?.label ?? predictionResult.receivedChoiceId}`);
+    lines.push(`  정답: ${correctChoice?.label ?? predictionResult.expectedChoiceId}`);
+    lines.push("");
+    lines.push("  왜 이게 정답인가:");
+    if (result.evidenceClaims) {
+      for (const claim of result.evidenceClaims) {
+        for (const anchor of claim.evidence) {
+          const lineRange = anchor.lineEnd
+            ? `${anchor.lineStart}-${anchor.lineEnd}`
+            : `${anchor.lineStart}`;
+          lines.push(`    ${anchor.filePath}:${lineRange} [${claim.confidence}]`);
+        }
+      }
+    }
+    return `${lines.join("\n")}\n`;
+  }
+
+  return "";
 }
