@@ -28,7 +28,7 @@ Explain / Explore / Verify
 갖춰져야 합니다:
 
 1. **근거(Grounding)** — 모든 주장은 저장소 근거까지 되짚어 확인할 수 있어야 합니다.
-2. **신선도(Freshness)** — 소스가 바뀌었는데도 캐시된 지식이 슬그머니 남아 있어서는 안 됩니다.
+2. **최신성(Freshness)** — 소스가 바뀌었는데도 캐시된 지식이 슬그머니 남아 있어서는 안 됩니다.
 3. **경계(Boundaries)** — 모를 때는 그럴듯한 답을 지어내지 말고, 모른다고 분명히
    말해야 합니다.
 
@@ -254,7 +254,7 @@ legora verify --answer <choice-id> <flow-record-id>
 만들어 줍니다.
 
 Verify는 fail-closed로 동작합니다. 대상 레코드가 behavior flow가 아니거나, `READY`
-상태가 아니거나(신선도가 stale이거나 unknown), 서로 구별되는 선택지로 챌린지를
+상태가 아니거나(최신성이 stale이거나 unknown), 서로 구별되는 선택지로 챌린지를
 만들 만큼 근거가 충분하지 않으면, Legora는 퀴즈를 억지로 지어내지 않고 만들기를
 거부합니다. Legora의 다른 기능과 마찬가지로, 예측은 포착된 근거에 뒷받침될 때만
 내놓습니다.
@@ -279,12 +279,12 @@ legora scan --json
 
 커버리지는 딱 세 가지 상태, 즉 `covered`, `stale`, `uncovered`로 보고됩니다.
 참조되지 않은 상태를 굳이 `unknown`이 아니라 `uncovered`라고 부르는 이유는, 다른
-곳에서 쓰이는 신선도 `UNKNOWN` 상태와 헷갈리지 않게 하기 위해서입니다. 이 매핑
+곳에서 쓰이는 최신성 `UNKNOWN` 상태와 헷갈리지 않게 하기 위해서입니다. 이 매핑
 역시 fail-closed입니다:
 
-- 신선도가 `CURRENT`인 지식 레코드의 active evidence가 참조하는 저장소 파일은
+- 최신성이 `CURRENT`인 지식 레코드의 active evidence가 참조하는 저장소 파일은
   `covered`입니다.
-- 신선도가 `STALE`이나 `UNKNOWN`인 레코드가 참조하는 파일은 `stale`입니다
+- 최신성이 `STALE`이나 `UNKNOWN`인 레코드가 참조하는 파일은 `stale`입니다
   (fail-closed 원칙에 따라, 오래되었거나 검증할 수 없는 근거는 절대 covered로
   치지 않습니다).
 - 어떤 지식 레코드도 참조하지 않는 파일은 `uncovered`입니다.
@@ -305,7 +305,7 @@ Legora는 저장소 로컬 지식을 다음 위치에 저장합니다:
 ```
 
 Repository Knowledge는 active evidence와 historical evidence 개정본을 따로
-관리합니다. 신선도 검사는 active evidence를 읽으며, 소스 자료가 삭제되거나
+관리합니다. 최신성 검사는 active evidence를 읽으며, 소스 자료가 삭제되거나
 바뀌거나 검증할 수 없으면 fail closed로 처리합니다.
 
 코딩 에이전트는 근거를 *어디서* 포착할지 제안할 수 있지만, 그 제안을 검증하고
@@ -360,7 +360,7 @@ realpath containment re-check
 이 두 번째 확인은 저장소 안의 심볼릭 링크나 정션을 통해 대상 저장소 밖의 근거를
 읽어 들이는 일을 막아 줍니다.
 
-같은 fail-closed 원칙은 신선도 검사와 Repository Knowledge 투영에도 그대로
+같은 fail-closed 원칙은 최신성 검사와 Repository Knowledge 투영에도 그대로
 적용됩니다.
 
 ## 이식형 Agent Skill
