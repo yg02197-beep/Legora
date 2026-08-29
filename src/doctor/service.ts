@@ -63,7 +63,7 @@ function selectedAgents(requested: readonly SupportedAgent[] | "all"): Supported
 
 function statesForInspection(inspection: ManagedCopyInspection): Pick<AgentDoctorResult, "installTarget" | "managedDigest"> {
   if (inspection.state === "NO_CHANGE") return { installTarget: "PASS", managedDigest: "PASS" };
-  if (inspection.state === "MANAGED_UPDATE") return { installTarget: "PASS", managedDigest: "FAIL" };
+  if (inspection.state === "MANAGED_UPDATE") return { installTarget: "PASS", managedDigest: "OUTDATED" };
   if (inspection.state === "ABSENT") return { installTarget: "NOT_FOUND", managedDigest: "NOT_FOUND" };
   return { installTarget: "FAIL", managedDigest: "FAIL" };
 }
@@ -115,6 +115,7 @@ export async function doctorLegora(input: {
   requested: readonly SupportedAgent[] | "all";
   host: HostEnvironment;
   canonicalSkillRoot?: string;
+  packageVersion?: string;
   runLocalCommand?: LocalCommandRunner;
 }): Promise<DoctorResult> {
   const requested = selectedAgents(input.requested);
@@ -169,11 +170,21 @@ export async function doctorLegora(input: {
         runLocalCommand,
       });
     }
+    const versionFields =
+      inspection.state === "MANAGED_UPDATE"
+        ? {
+            ...(inspection.installedPackageVersion === undefined
+              ? {}
+              : { installedVersion: inspection.installedPackageVersion }),
+            ...(input.packageVersion === undefined ? {} : { currentVersion: input.packageVersion }),
+          }
+        : {};
     agents.push({
       agent,
       executable: executable ? "PASS" : "NOT_FOUND",
       ...targetStates,
       nativeDiscovery,
+      ...versionFields,
     });
   }
 

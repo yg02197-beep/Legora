@@ -300,6 +300,7 @@ export async function runCliCommand(
       requested: options.requested,
       host: input.host ?? defaultHost(),
       canonicalSkillRoot: input.canonicalSkillRoot,
+      packageVersion: input.packageVersion ?? await packageVersion(),
       runLocalCommand: input.runLocalCommand,
     });
     return {

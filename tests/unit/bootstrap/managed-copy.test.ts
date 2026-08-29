@@ -100,8 +100,8 @@ test("managed-copy inspection distinguishes absent, current, and packaged update
   try {
     assert.deepEqual(await inspectManagedCopy(target, current.snapshot), { state: "ABSENT", reason: "TARGET_ABSENT" });
     await writeManagedTarget(target, current.snapshot);
-    assert.deepEqual(await inspectManagedCopy(target, current.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY" });
-    assert.deepEqual(await inspectManagedCopy(target, next.snapshot), { state: "MANAGED_UPDATE", reason: "PACKAGED_PAYLOAD_CHANGED" });
+    assert.deepEqual(await inspectManagedCopy(target, current.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY", installedPackageVersion: "0.1.0" });
+    assert.deepEqual(await inspectManagedCopy(target, next.snapshot), { state: "MANAGED_UPDATE", reason: "PACKAGED_PAYLOAD_CHANGED", installedPackageVersion: "0.1.0" });
   } finally {
     await cleanup(current.parent, next.parent, home);
   }
@@ -196,13 +196,13 @@ test("fresh publication can be rolled back or finalized without residue", async 
   try {
     const first = await publishManagedCopy({ target, snapshot: canonical.snapshot, packageVersion: "0.1.0" });
     assert.equal(first.changed, true);
-    assert.deepEqual(await inspectManagedCopy(target, canonical.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY" });
+    assert.deepEqual(await inspectManagedCopy(target, canonical.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY", installedPackageVersion: "0.1.0" });
     await first.rollback();
     assert.equal(await treeBytes(target), null);
 
     const second = await publishManagedCopy({ target, snapshot: canonical.snapshot, packageVersion: "0.1.0" });
     await second.finalize();
-    assert.deepEqual(await inspectManagedCopy(target, canonical.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY" });
+    assert.deepEqual(await inspectManagedCopy(target, canonical.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY", installedPackageVersion: "0.1.0" });
     assert.equal((await fs.readdir(path.dirname(target))).some((name) => name.includes(".legora-stage-") || name.includes(".legora-backup-")), false);
   } finally {
     await cleanup(canonical.parent, home);
@@ -219,13 +219,13 @@ test("managed update rollback restores exact prior bytes and finalize retains th
     const before = await treeBytes(target);
 
     const update = await publishManagedCopy({ target, snapshot: next.snapshot, packageVersion: "0.2.0" });
-    assert.deepEqual(await inspectManagedCopy(target, next.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY" });
+    assert.deepEqual(await inspectManagedCopy(target, next.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY", installedPackageVersion: "0.2.0" });
     await update.rollback();
     assert.deepEqual(await treeBytes(target), before);
 
     const committed = await publishManagedCopy({ target, snapshot: next.snapshot, packageVersion: "0.2.0" });
     await committed.finalize();
-    assert.deepEqual(await inspectManagedCopy(target, next.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY" });
+    assert.deepEqual(await inspectManagedCopy(target, next.snapshot), { state: "NO_CHANGE", reason: "CURRENT_MANAGED_COPY", installedPackageVersion: "0.2.0" });
   } finally {
     await cleanup(current.parent, next.parent, home);
   }

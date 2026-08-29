@@ -1,6 +1,6 @@
 import type { SupportedAgent } from "../bootstrap/contracts.ts";
 
-export type DiagnosticState = "PASS" | "FAIL" | "NOT_FOUND" | "NOT_PROBED" | "CONFIRMED" | "TIMEOUT";
+export type DiagnosticState = "PASS" | "FAIL" | "NOT_FOUND" | "NOT_PROBED" | "CONFIRMED" | "TIMEOUT" | "OUTDATED";
 
 export interface AgentDoctorResult {
   agent: SupportedAgent;
@@ -8,6 +8,8 @@ export interface AgentDoctorResult {
   installTarget: DiagnosticState;
   managedDigest: DiagnosticState;
   nativeDiscovery: DiagnosticState;
+  installedVersion?: string;
+  currentVersion?: string;
 }
 
 export interface DoctorResult {
