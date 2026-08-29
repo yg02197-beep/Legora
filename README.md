@@ -1,5 +1,7 @@
 # Legora
 
+**English** | [한국어](README.ko.md)
+
 **Evidence-grounded code understanding for humans and coding agents — Explain, Explore, Verify.**
 
 Legora helps a person understand what a codebase actually does without asking an
