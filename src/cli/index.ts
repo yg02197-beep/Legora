@@ -21,7 +21,7 @@ import { readKnowledgeRecords } from "../repository-knowledge/store.ts";
 import { resolveLegoraPackageRoot } from "../skills/canonical.ts";
 import { computeScanCoverage } from "../scan/coverage.ts";
 import { runLegoraVerify } from "../verify/service.ts";
-import { renderBootstrapResult, renderDoctorResult, renderEntryResult, renderScanResult, renderVerifyResult } from "./render.ts";
+import { renderBootstrapResult, renderDoctorResult, renderEntryResult, renderHelp, renderScanResult, renderVerifyResult } from "./render.ts";
 
 export interface CliCommandResult {
   exitCode: number;
@@ -29,7 +29,7 @@ export interface CliCommandResult {
   stdout?: string;
 }
 
-const USAGE = [
+export const USAGE = [
   "legora entry <question>",
   "legora entry --candidate <record-id> <question>",
   "legora entry --reject-candidates <question>",
@@ -268,6 +268,14 @@ export async function runCliCommand(
   repositoryRoot: string,
   input: CliCommandInput = {},
 ): Promise<CliCommandResult> {
+  if (argv.length === 0 || argv[0] === "--help" || argv[0] === "-h" || argv[0] === "help") {
+    return {
+      exitCode: 0,
+      data: { command: "help", status: "HELP", usage: USAGE },
+      stdout: renderHelp(USAGE),
+    };
+  }
+
   if (argv[0] === "bootstrap") {
     const options = parseBootstrapOptions(argv);
     if (!options) return usageError("Invalid bootstrap options.");

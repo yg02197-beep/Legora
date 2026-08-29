@@ -13,6 +13,18 @@ function labelAgent(agent: string): string {
   return agent;
 }
 
+export function renderHelp(usage: string): string {
+  const lines = [
+    "Legora - evidence-grounded code understanding",
+    "",
+    "Usage:",
+    ...usage.split("\n").map((entry) => `  ${entry}`),
+    "",
+    "  Append --json to any command for structured output.",
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
 export function renderBootstrapResult(result: BootstrapResult): string {
   const lines = [
     `Legora bootstrap: ${result.status}`,
