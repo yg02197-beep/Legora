@@ -134,6 +134,17 @@ From the repository you want to understand, start with an actual question:
 legora entry "Where is authentication enforced and what happens when it fails?"
 ```
 
+`legora entry` now prints human-readable text by default, so a person can read
+the result directly in the terminal. Coding agents that need structured output
+can add `--json`:
+
+```powershell
+legora entry "Where is authentication enforced and what happens when it fails?" --json
+```
+
+The `--json` output is the prior structured contract and is unchanged, so the
+agent-facing behavior stays backward compatible.
+
 Entry is a gate, not an answer generator. Its lifecycle is:
 
 ```text
@@ -212,6 +223,66 @@ skills/legora/references/verify.md
 
 The repository-root `SKILL.md` is a compatibility pointer, not a second source
 of workflow truth.
+
+### Verify
+
+`legora verify` exposes the evidence-grounded Prediction infrastructure as a
+CLI quiz. It is the Prediction form of the Verify capability: it builds an
+evidence-derived prediction challenge from a `READY` behavior-flow knowledge
+record, with the question and answer choices derived from that record's
+evidence rather than fabricated.
+
+```powershell
+legora verify <flow-record-id>
+legora verify --answer <choice-id> <flow-record-id>
+```
+
+The full flag surface is `legora verify <flow-record-id> [--json]` and
+`legora verify --answer <choice-id> <flow-record-id> [--json]`. Without
+`--answer` Legora prints the challenge; `--answer <choice-id>` grades a chosen
+option against the evidence. `--json` produces structured output for coding
+agents.
+
+Verify is fail-closed. If the target record is not a behavior flow, is not
+`READY` (its freshness is stale or unknown), or does not carry enough evidence
+to build a challenge with distinct choices, Legora declines to make a quiz
+instead of inventing one. As with the rest of Legora, a prediction is only
+offered when it is grounded in captured evidence.
+
+## Repository scan
+
+`legora scan` is a shallow pass that builds a structural Repository Inventory
+(files and modules, discovered via `git ls-files`) and then maps how far the
+current Repository Knowledge covers it. It is Repository Inventory + Knowledge
+Coverage, not exhaustive analysis or answer generation.
+
+```powershell
+legora scan
+legora scan --depth file
+legora scan --json
+```
+
+The full flag surface is `legora scan [--depth file|module] [--json]`. The
+default depth is `module`; `--depth file` reports per-file coverage; `--json`
+produces structured output for coding agents.
+
+Coverage is reported in exactly three states — `covered`, `stale`, and
+`uncovered`. The unreferenced state is deliberately called `uncovered`, not
+`unknown`, so it is not confused with the freshness `UNKNOWN` state used
+elsewhere. The mapping is fail-closed:
+
+- a repository file referenced by a knowledge record's active evidence whose
+  freshness is `CURRENT` is `covered`;
+- a file referenced by a record whose freshness is `STALE` or `UNKNOWN` is
+  `stale` (fail-closed — old or unverifiable evidence never counts as covered);
+- a file not referenced by any knowledge record is `uncovered`.
+
+Human-readable output looks like this (default `module` depth):
+
+```text
+Legora scan: 1 files (0 covered, 0 stale, 1 uncovered)
+  src  total=1  covered=0  stale=0  uncovered=1
+```
 
 ## Repository Knowledge
 
