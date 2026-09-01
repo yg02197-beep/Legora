@@ -174,14 +174,22 @@ export function projectKnowledgeBehaviorSlice(
     }
 
     if (step.label) {
+      const stepClaims = step.evidenceAnchorIndexes === undefined
+        ? null
+        : step.evidenceAnchorIndexes
+          .map((anchorIndex) => flowClaims[anchorIndex])
+          .filter((claim): claim is EvidenceClaim => claim !== undefined);
+      if (stepClaims) addClaims(stepClaims);
       appendUniqueFact(behaviorSlice.flows, makeFact(
         "flows",
         step.label,
         [flow.id, entity.id],
-        unique([
-          ...flowClaims.map((claim) => claim.id),
-          ...entityClaims.map((claim) => claim.id),
-        ]),
+        stepClaims === null
+          ? unique([
+              ...flowClaims.map((claim) => claim.id),
+              ...entityClaims.map((claim) => claim.id),
+            ])
+          : unique(stepClaims.map((claim) => claim.id)),
       ));
     }
   });
