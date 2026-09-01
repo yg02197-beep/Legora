@@ -168,6 +168,39 @@ function slug(value: string): string {
   return result || "knowledge";
 }
 
+function locatorKey(locator: KnowledgeEvidenceLocator): string {
+  return `${locator.filePath}\u0000${locator.lineStart}\u0000${locator.lineEnd ?? locator.lineStart}`;
+}
+
+function flowEvidenceCapture(input: SimpleFlowAcquisitionInput): {
+  captureLocators: KnowledgeEvidenceLocator[];
+  stepIndexes: Array<number[] | undefined>;
+  hasExplicitStepEvidence: boolean;
+} {
+  const captureLocators: KnowledgeEvidenceLocator[] = [];
+  const indexesByLocator = new Map<string, number>();
+  const addLocator = (locator: KnowledgeEvidenceLocator): number => {
+    const key = locatorKey(locator);
+    const existing = indexesByLocator.get(key);
+    if (existing !== undefined) return existing;
+    const index = captureLocators.length;
+    captureLocators.push(locator);
+    indexesByLocator.set(key, index);
+    return index;
+  };
+
+  for (const locator of input.evidenceLocators) addLocator(locator);
+
+  let hasExplicitStepEvidence = false;
+  const stepIndexes = input.steps.map((step) => {
+    if (step.evidenceLocators === undefined) return undefined;
+    hasExplicitStepEvidence = true;
+    return [...new Set(step.evidenceLocators.map(addLocator))];
+  });
+
+  return { captureLocators, stepIndexes, hasExplicitStepEvidence };
+}
+
 function existingEntityId(records: readonly KnowledgeRecord[], name: string): string | null {
   const target = normalizedIdentity(name);
   const found = records.find((record) => record.structure?.type === "ENTITY"
@@ -232,7 +265,8 @@ export function buildSimpleAcquisitionProposal(
   const participants = new Map<string, NativeKnowledgeCandidate>();
 
   if (input.type === "flow") {
-    const steps = input.steps.map((step) => ({
+    const flowEvidence = flowEvidenceCapture(input);
+    const steps = input.steps.map((step, index) => ({
       entityId: participantId(
         existingRecords,
         participants,
@@ -240,6 +274,9 @@ export function buildSimpleAcquisitionProposal(
         step.evidenceLocators ?? input.evidenceLocators,
       ),
       ...(step.label === undefined ? {} : { label: step.label }),
+      ...(flowEvidence.stepIndexes[index] === undefined
+        ? {}
+        : { evidenceAnchorIndexes: flowEvidence.stepIndexes[index] }),
     }));
     const flowKind = (input.flowKind ?? "flow").trim();
     return {
@@ -256,6 +293,9 @@ export function buildSimpleAcquisitionProposal(
             steps,
           },
           evidenceLocators: input.evidenceLocators,
+          ...(flowEvidence.hasExplicitStepEvidence
+            ? { evidenceCaptureLocators: flowEvidence.captureLocators }
+            : {}),
         },
       ],
     };

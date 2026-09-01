@@ -12,6 +12,7 @@ export interface NativeKnowledgeCandidate {
   subject: string;
   structure?: KnowledgeStructure;
   evidenceLocators: KnowledgeEvidenceLocator[];
+  evidenceCaptureLocators?: KnowledgeEvidenceLocator[];
 }
 
 export interface KnowledgeAcquisitionProposal {

@@ -54,7 +54,8 @@ async function captureCandidateEvidence(
 
   for (const candidate of proposal.candidates) {
     const captured: KnowledgeEvidenceAnchor[] = [];
-    for (const locator of candidate.evidenceLocators) {
+    const captureLocators = candidate.evidenceCaptureLocators ?? candidate.evidenceLocators;
+    for (const locator of captureLocators) {
       let result;
       try {
         result = await captureEvidence({
