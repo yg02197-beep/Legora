@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { decodeCartographerModel } from "../../../src/providers/cartographer/decoder.ts";
 import { importCartographerModelView } from "../../../src/repository-knowledge/cartographer-import.ts";
+import type { KnowledgeRecord } from "../../../src/repository-knowledge/contracts.ts";
 import {
   projectKnowledgeBehaviorSlice,
   RepositoryKnowledgeProjectionError,
@@ -156,4 +157,96 @@ test("two-hop and unrelated repository relationships remain ignored and diagnose
 
   assert.ok(result.diagnostics.ignoredRelations.includes("triggers"));
   assert.ok(result.diagnostics.ignoredRelations.includes("contains"));
+});
+
+test("explicit flow step evidence indexes ground only that step fact", () => {
+  const now = "2026-09-01T00:00:00.000Z";
+  const records: KnowledgeRecord[] = [
+    {
+      id: "native:flow:report-generation",
+      kind: "behavior-flow:flow",
+      subject: "Report generation",
+      structure: {
+        type: "BEHAVIOR_FLOW",
+        flowKind: "flow",
+        name: "Report generation",
+        steps: [
+          {
+            entityId: "native:entity:apply-corrections",
+            label: "Apply reviewed corrections",
+            evidenceAnchorIndexes: [0],
+          },
+          {
+            entityId: "native:entity:publish-report",
+            label: "Publish report",
+            evidenceAnchorIndexes: [1],
+          },
+        ],
+      },
+      activeEvidence: [
+        {
+          filePath: "src/report.ts",
+          lineStart: 20,
+          lineEnd: 30,
+          snippet: "applyCorrections();",
+          confidence: "INFERRED",
+          sourceConfidence: "repository-captured",
+        },
+        {
+          filePath: "src/publish.ts",
+          lineStart: 40,
+          lineEnd: 50,
+          snippet: "publishReport();",
+          confidence: "INFERRED",
+          sourceConfidence: "repository-captured",
+        },
+      ],
+      history: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "native:entity:apply-corrections",
+      kind: "entity:participant",
+      subject: "Apply corrections",
+      structure: { type: "ENTITY", entityKind: "participant", name: "Apply corrections" },
+      activeEvidence: [{
+        filePath: "src/entity.ts",
+        lineStart: 1,
+        snippet: "entityEvidence();",
+        confidence: "INFERRED",
+        sourceConfidence: "repository-captured",
+      }],
+      history: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "native:entity:publish-report",
+      kind: "entity:participant",
+      subject: "Publish report",
+      structure: { type: "ENTITY", entityKind: "participant", name: "Publish report" },
+      activeEvidence: [{
+        filePath: "src/entity.ts",
+        lineStart: 2,
+        snippet: "otherEntityEvidence();",
+        confidence: "INFERRED",
+        sourceConfidence: "repository-captured",
+      }],
+      history: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+  ];
+
+  const result = projectKnowledgeBehaviorSlice(records, "native:flow:report-generation");
+  const correction = result.behaviorSlice.flows.find((fact) => fact.text === "Apply reviewed corrections");
+  const publication = result.behaviorSlice.flows.find((fact) => fact.text === "Publish report");
+
+  assert.deepEqual(correction?.requiredEvidenceClaimIds, [
+    "native:flow:report-generation#active-evidence-0",
+  ]);
+  assert.deepEqual(publication?.requiredEvidenceClaimIds, [
+    "native:flow:report-generation#active-evidence-1",
+  ]);
 });
