@@ -60,6 +60,34 @@ function claimsFor(record: KnowledgeRecord): EvidenceClaim[] {
   return record.activeEvidence.map((anchor, index) => evidenceClaim(record, anchor, index));
 }
 
+function claimsForExplicitFlowStep(
+  flowRecordId: string,
+  flowClaims: readonly EvidenceClaim[],
+  indexes: readonly number[] | undefined,
+): EvidenceClaim[] | null {
+  if (indexes === undefined) return null;
+  const seen = new Set<number>();
+  if (indexes.length === 0) {
+    throw new RepositoryKnowledgeProjectionError(
+      "KNOWLEDGE_FLOW_EVIDENCE_INDEX_INVALID",
+      `Repository knowledge flow '${flowRecordId}' contains an empty explicit step evidence index set.`,
+    );
+  }
+
+  const claims: EvidenceClaim[] = [];
+  for (const index of indexes) {
+    if (!Number.isInteger(index) || index < 0 || index >= flowClaims.length || seen.has(index)) {
+      throw new RepositoryKnowledgeProjectionError(
+        "KNOWLEDGE_FLOW_EVIDENCE_INDEX_INVALID",
+        `Repository knowledge flow '${flowRecordId}' contains invalid explicit step evidence index '${index}'.`,
+      );
+    }
+    seen.add(index);
+    claims.push(flowClaims[index]!);
+  }
+  return claims;
+}
+
 function makeFact(
   category: BehaviorFactCategory,
   text: string,
@@ -174,11 +202,7 @@ export function projectKnowledgeBehaviorSlice(
     }
 
     if (step.label) {
-      const stepClaims = step.evidenceAnchorIndexes === undefined
-        ? null
-        : step.evidenceAnchorIndexes
-          .map((anchorIndex) => flowClaims[anchorIndex])
-          .filter((claim): claim is EvidenceClaim => claim !== undefined);
+      const stepClaims = claimsForExplicitFlowStep(flow.id, flowClaims, step.evidenceAnchorIndexes);
       if (stepClaims) addClaims(stepClaims);
       appendUniqueFact(behaviorSlice.flows, makeFact(
         "flows",
