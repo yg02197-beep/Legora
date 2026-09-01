@@ -59,8 +59,16 @@ export const SIMPLE_ACQUISITION_EXAMPLES: readonly SimpleKnowledgeAcquisitionInp
     subject: "Download fallback chain",
     flowKind: "routing",
     steps: [
-      { entity: "Direct attempt", label: "Try direct download" },
-      { entity: "General fallback", label: "Try fallback" },
+      {
+        entity: "Direct attempt",
+        label: "Try direct download",
+        evidenceLocators: [{ filePath: "src/download.ts", lineStart: 1, lineEnd: 10 }],
+      },
+      {
+        entity: "General fallback",
+        label: "Try fallback",
+        evidenceLocators: [{ filePath: "src/download.ts", lineStart: 11, lineEnd: 20 }],
+      },
     ],
     evidenceLocators: [{ filePath: "src/download.ts", lineStart: 1, lineEnd: 20 }],
   },
