@@ -182,6 +182,7 @@ function locatorKey(locator: KnowledgeEvidenceLocator): string {
 
 function flowEvidenceCapture(input: SimpleFlowAcquisitionInput): {
   captureLocators: KnowledgeEvidenceLocator[];
+  flowIndexes: number[];
   stepIndexes: Array<number[] | undefined>;
   hasExplicitStepEvidence: boolean;
 } {
@@ -197,7 +198,7 @@ function flowEvidenceCapture(input: SimpleFlowAcquisitionInput): {
     return index;
   };
 
-  for (const locator of input.evidenceLocators) addLocator(locator);
+  const flowIndexes = [...new Set(input.evidenceLocators.map(addLocator))];
 
   let hasExplicitStepEvidence = false;
   const stepIndexes = input.steps.map((step) => {
@@ -206,7 +207,7 @@ function flowEvidenceCapture(input: SimpleFlowAcquisitionInput): {
     return [...new Set(step.evidenceLocators.map(addLocator))];
   });
 
-  return { captureLocators, stepIndexes, hasExplicitStepEvidence };
+  return { captureLocators, flowIndexes, stepIndexes, hasExplicitStepEvidence };
 }
 
 function existingEntityId(records: readonly KnowledgeRecord[], name: string): string | null {
@@ -274,18 +275,21 @@ export function buildSimpleAcquisitionProposal(
 
   if (input.type === "flow") {
     const flowEvidence = flowEvidenceCapture(input);
-    const steps = input.steps.map((step, index) => ({
-      entityId: participantId(
-        existingRecords,
-        participants,
-        step.entity,
-        step.evidenceLocators ?? input.evidenceLocators,
-      ),
-      ...(step.label === undefined ? {} : { label: step.label }),
-      ...(flowEvidence.stepIndexes[index] === undefined
-        ? {}
-        : { evidenceAnchorIndexes: flowEvidence.stepIndexes[index] }),
-    }));
+    const steps = input.steps.map((step, index) => {
+      const explicitIndexes = flowEvidence.stepIndexes[index];
+      const evidenceAnchorIndexes = explicitIndexes
+        ?? (flowEvidence.hasExplicitStepEvidence ? flowEvidence.flowIndexes : undefined);
+      return {
+        entityId: participantId(
+          existingRecords,
+          participants,
+          step.entity,
+          step.evidenceLocators ?? input.evidenceLocators,
+        ),
+        ...(step.label === undefined ? {} : { label: step.label }),
+        ...(evidenceAnchorIndexes === undefined ? {} : { evidenceAnchorIndexes }),
+      };
+    });
     const flowKind = (input.flowKind ?? "flow").trim();
     return {
       candidates: [
