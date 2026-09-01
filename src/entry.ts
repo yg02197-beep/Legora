@@ -115,6 +115,7 @@ function selectFlowRecord(
 
 function referencedRecordIds(projection: KnowledgeProjectionResult): Set<string> {
   const ids = new Set<string>([projection.source.flowRecordId]);
+  const claimsById = new Map(projection.evidenceClaims.map((claim) => [claim.id, claim]));
   const facts = [
     ...projection.behaviorSlice.participants,
     ...projection.behaviorSlice.states,
@@ -125,7 +126,10 @@ function referencedRecordIds(projection: KnowledgeProjectionResult): Set<string>
     ...projection.behaviorSlice.failures,
   ];
   for (const fact of facts) {
-    for (const ref of fact.providerRefs) ids.add(ref);
+    for (const claimId of fact.requiredEvidenceClaimIds) {
+      const claim = claimsById.get(claimId);
+      if (claim) ids.add(claim.providerObjectId);
+    }
   }
   return ids;
 }
