@@ -4,8 +4,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { runLegoraEntry } from "../../src/entry.ts";
-import { writeKnowledgeRecord } from "../../src/repository-knowledge/store.ts";
+import { runLegoraEntry } from "../../../src/entry.ts";
+import { writeKnowledgeRecord } from "../../../src/repository-knowledge/store.ts";
 
 test("Entry freshness ignores semantic Entity evidence when explicit step grounding does not require it", async () => {
   const repositoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "legora-entry-step-freshness-"));
