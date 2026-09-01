@@ -1,0 +1,29 @@
+name: Tripod Variant Probe
+on:
+  push:
+    branches: [spike/tripod-validation]
+    paths:
+      - 'tools/tripod_variant_probe.py'
+      - '.github/workflows/tripod-variants.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --upgrade pip pandas numpy
+      - run: python -m py_compile tools/tripod_remote_validation.py tools/run_tripod_validation.py tools/tripod_variant_probe.py
+      - run: |
+          mkdir -p tripod_variant_results
+          python tools/tripod_variant_probe.py | tee tripod_variant_results/console.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tripod-variant-results
+          path: tripod_variant_results/
+          retention-days: 7
