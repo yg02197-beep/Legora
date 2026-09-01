@@ -171,3 +171,51 @@ test("simple flow keeps step evidence separate from flow evidence", () => {
     { filePath: "src/report.ts", lineStart: 1, lineEnd: 10 },
   ]);
 });
+
+test("simple flow records step evidence indexes against one capture surface", () => {
+  const input = {
+    type: "flow",
+    subject: "Report generation",
+    evidenceLocators: [{ filePath: "src/report.ts", lineStart: 1, lineEnd: 10 }],
+    steps: [
+      {
+        entity: "Apply corrections",
+        label: "Apply reviewed corrections",
+        evidenceLocators: [{ filePath: "src/report.ts", lineStart: 20, lineEnd: 30 }],
+      },
+      {
+        entity: "Publish report",
+        label: "Publish report",
+        evidenceLocators: [{ filePath: "src/publish.ts", lineStart: 40, lineEnd: 50 }],
+      },
+    ],
+  } as unknown as SimpleKnowledgeAcquisitionInput;
+
+  const proposal = buildSimpleAcquisitionProposal(input, []);
+  const flow = proposal.candidates.find((candidate) => candidate.id === "native:flow:report-generation") as
+    | (typeof proposal.candidates[number] & { evidenceCaptureLocators?: unknown })
+    | undefined;
+
+  assert.deepEqual(flow?.evidenceCaptureLocators, [
+    { filePath: "src/report.ts", lineStart: 1, lineEnd: 10 },
+    { filePath: "src/report.ts", lineStart: 20, lineEnd: 30 },
+    { filePath: "src/publish.ts", lineStart: 40, lineEnd: 50 },
+  ]);
+  assert.deepEqual(flow?.structure, {
+    type: "BEHAVIOR_FLOW",
+    flowKind: "flow",
+    name: "Report generation",
+    steps: [
+      {
+        entityId: "native:entity:apply-corrections",
+        label: "Apply reviewed corrections",
+        evidenceAnchorIndexes: [1],
+      },
+      {
+        entityId: "native:entity:publish-report",
+        label: "Publish report",
+        evidenceAnchorIndexes: [2],
+      },
+    ],
+  });
+});
