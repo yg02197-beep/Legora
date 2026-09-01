@@ -25,12 +25,16 @@ def parse_vix(path):
 def load_fixed():
     ndx = parse_ndx(trv.dl('ndx'))
     vix = parse_vix(trv.dl('vix'))
-    df = ndx.join(vix, how='inner').dropna()
-    df = df.loc['1989-01-01':'2025-12-31']
-    if len(df) < 8000:
-        raise RuntimeError(f'unexpectedly short common NDX/VIX history: {len(df)} rows')
-    if df.index[0].year > 1990 or df.index[-1].year < 2025:
-        raise RuntimeError(f'unexpected history range: {df.index[0]} to {df.index[-1]}')
+    # Keep pre-1990 NDX history so SMA250/52-week-high are fully warmed up
+    # when VIX becomes available in January 1990. Joining first with VIX would
+    # incorrectly discard 1986-1989 NDX and delay the first signal by ~1 year.
+    df = ndx.join(vix, how='left')
+    df = df.loc['1986-01-01':'2025-12-31']
+    if len(df) < 9500:
+        raise RuntimeError(f'unexpectedly short NDX history: {len(df)} rows')
+    vix_valid = df.vix.dropna()
+    if vix_valid.empty or vix_valid.index[0].year != 1990 or vix_valid.index[-1].year < 2025:
+        raise RuntimeError(f'unexpected VIX range: {vix_valid.index[0] if len(vix_valid) else None} to {vix_valid.index[-1] if len(vix_valid) else None}')
     return df
 
 
