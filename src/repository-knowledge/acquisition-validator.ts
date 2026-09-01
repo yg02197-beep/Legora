@@ -1,6 +1,7 @@
 import type { KnowledgeRecord } from "./contracts.ts";
 import type {
   KnowledgeAcquisitionProposal,
+  KnowledgeEvidenceLocator,
   NativeKnowledgeCandidate,
 } from "./acquisition-contracts.ts";
 
@@ -30,15 +31,29 @@ function hasIdentity(candidate: NativeKnowledgeCandidate): boolean {
     && candidate.subject.trim().length > 0;
 }
 
+function isValidEvidenceLocator(locator: KnowledgeEvidenceLocator): boolean {
+  const end = locator.lineEnd ?? locator.lineStart;
+  return locator.filePath.trim().length > 0
+    && Number.isInteger(locator.lineStart)
+    && Number.isInteger(end)
+    && locator.lineStart >= 1
+    && end >= locator.lineStart;
+}
+
+function evidenceLocatorKey(locator: KnowledgeEvidenceLocator): string {
+  return `${locator.filePath}\u0000${locator.lineStart}\u0000${locator.lineEnd ?? locator.lineStart}`;
+}
+
 function hasValidEvidenceLocators(candidate: NativeKnowledgeCandidate): boolean {
-  return candidate.evidenceLocators.every((locator) => {
-    const end = locator.lineEnd ?? locator.lineStart;
-    return locator.filePath.trim().length > 0
-      && Number.isInteger(locator.lineStart)
-      && Number.isInteger(end)
-      && locator.lineStart >= 1
-      && end >= locator.lineStart;
-  });
+  if (!candidate.evidenceLocators.every(isValidEvidenceLocator)) return false;
+  if (candidate.evidenceCaptureLocators === undefined) return true;
+  if (candidate.evidenceCaptureLocators.length === 0
+    || !candidate.evidenceCaptureLocators.every(isValidEvidenceLocator)) {
+    return false;
+  }
+
+  const captureLocatorKeys = new Set(candidate.evidenceCaptureLocators.map(evidenceLocatorKey));
+  return candidate.evidenceLocators.every((locator) => captureLocatorKeys.has(evidenceLocatorKey(locator)));
 }
 
 function validateReferences(

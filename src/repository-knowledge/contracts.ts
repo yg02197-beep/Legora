@@ -29,6 +29,7 @@ export interface KnowledgeRelationshipStructure {
 export interface KnowledgeBehaviorFlowStep {
   entityId: string;
   label?: string;
+  evidenceAnchorIndexes?: number[];
 }
 
 export interface KnowledgeBehaviorFlowStructure {

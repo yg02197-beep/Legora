@@ -25,6 +25,8 @@ Legora helps a coding agent answer repository-understanding questions by groundi
 
 Prefer the simple acquisition contract: `entity`, `flow`, or `relationship`, with a subject, human-readable names or steps, and `filePath` / `lineStart` / `lineEnd` locators. Submit it without internal record IDs, internal `kind` strings, or Legora-owned structure JSON; Legora generates those fields and captures source evidence itself. The legacy full proposal remains accepted for compatibility, but it is not the normal agent path.
 
+For a `flow`, keep top-level `evidenceLocators` for evidence about the flow as a whole and attach `evidenceLocators` directly to each step whenever source evidence supports that specific step. Do not reuse broad flow evidence as a step's direct evidence merely for convenience. Omit step-specific locators only when the source cannot attribute evidence more precisely or when preserving legacy input.
+
 If acquisition returns `EXISTING_KNOWLEDGE` / `EXISTING_KNOWLEDGE_CANDIDATE`, do not create another record or continue repository investigation. Return to Entry and recover the reported existing knowledge instead.
 
 Do not author evidence snippets, history, timestamps, ACTIVE/HISTORY transitions, or CONFIRMED evidence status. Do not write `.legora/repository-knowledge.json` directly.

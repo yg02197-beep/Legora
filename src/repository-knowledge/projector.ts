@@ -60,6 +60,34 @@ function claimsFor(record: KnowledgeRecord): EvidenceClaim[] {
   return record.activeEvidence.map((anchor, index) => evidenceClaim(record, anchor, index));
 }
 
+function claimsForExplicitFlowStep(
+  flowRecordId: string,
+  flowClaims: readonly EvidenceClaim[],
+  indexes: readonly number[] | undefined,
+): EvidenceClaim[] | null {
+  if (indexes === undefined) return null;
+  const seen = new Set<number>();
+  if (indexes.length === 0) {
+    throw new RepositoryKnowledgeProjectionError(
+      "KNOWLEDGE_FLOW_EVIDENCE_INDEX_INVALID",
+      `Repository knowledge flow '${flowRecordId}' contains an empty explicit step evidence index set.`,
+    );
+  }
+
+  const claims: EvidenceClaim[] = [];
+  for (const index of indexes) {
+    if (!Number.isInteger(index) || index < 0 || index >= flowClaims.length || seen.has(index)) {
+      throw new RepositoryKnowledgeProjectionError(
+        "KNOWLEDGE_FLOW_EVIDENCE_INDEX_INVALID",
+        `Repository knowledge flow '${flowRecordId}' contains invalid explicit step evidence index '${index}'.`,
+      );
+    }
+    seen.add(index);
+    claims.push(flowClaims[index]!);
+  }
+  return claims;
+}
+
 function makeFact(
   category: BehaviorFactCategory,
   text: string,
@@ -150,7 +178,9 @@ export function projectKnowledgeBehaviorSlice(
     const entity = stepEntities[index]!;
     const structure = entity.structure as KnowledgeEntityStructure;
     const entityClaims = claimsFor(entity);
+    const explicitStepClaims = claimsForExplicitFlowStep(flow.id, flowClaims, step.evidenceAnchorIndexes);
     addClaims(entityClaims);
+    if (explicitStepClaims) addClaims(explicitStepClaims);
 
     let category: BehaviorFactCategory | null = null;
     let destination: BehaviorFact[] | null = null;
@@ -178,10 +208,12 @@ export function projectKnowledgeBehaviorSlice(
         "flows",
         step.label,
         [flow.id, entity.id],
-        unique([
-          ...flowClaims.map((claim) => claim.id),
-          ...entityClaims.map((claim) => claim.id),
-        ]),
+        explicitStepClaims === null
+          ? unique([
+              ...flowClaims.map((claim) => claim.id),
+              ...entityClaims.map((claim) => claim.id),
+            ])
+          : unique(explicitStepClaims.map((claim) => claim.id)),
       ));
     }
   });

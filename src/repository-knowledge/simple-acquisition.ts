@@ -25,6 +25,7 @@ export interface SimpleEntityAcquisitionInput extends SimpleAcquisitionBase {
 export interface SimpleFlowAcquisitionStep {
   entity: string;
   label?: string;
+  evidenceLocators?: KnowledgeEvidenceLocator[];
 }
 
 export interface SimpleFlowAcquisitionInput extends SimpleAcquisitionBase {
@@ -58,8 +59,16 @@ export const SIMPLE_ACQUISITION_EXAMPLES: readonly SimpleKnowledgeAcquisitionInp
     subject: "Download fallback chain",
     flowKind: "routing",
     steps: [
-      { entity: "Direct attempt", label: "Try direct download" },
-      { entity: "General fallback", label: "Try fallback" },
+      {
+        entity: "Direct attempt",
+        label: "Try direct download",
+        evidenceLocators: [{ filePath: "src/download.ts", lineStart: 1, lineEnd: 10 }],
+      },
+      {
+        entity: "General fallback",
+        label: "Try fallback",
+        evidenceLocators: [{ filePath: "src/download.ts", lineStart: 11, lineEnd: 20 }],
+      },
     ],
     evidenceLocators: [{ filePath: "src/download.ts", lineStart: 1, lineEnd: 20 }],
   },
@@ -98,6 +107,10 @@ function hasEvidenceLocators(value: unknown): value is KnowledgeEvidenceLocator[
   return Array.isArray(value) && value.length > 0 && value.every(isEvidenceLocator);
 }
 
+function hasOptionalEvidenceLocators(value: unknown): boolean {
+  return value === undefined || hasEvidenceLocators(value);
+}
+
 export function parseSimpleKnowledgeAcquisition(value: unknown): SimpleKnowledgeAcquisitionInput | null {
   if (!isObject(value)
     || !isNonEmptyString(value.subject)
@@ -121,7 +134,8 @@ export function parseSimpleKnowledgeAcquisition(value: unknown): SimpleKnowledge
       || value.steps.length === 0
       || !value.steps.every((step) => isObject(step)
         && isNonEmptyString(step.entity)
-        && isOptionalNonEmptyString(step.label))) {
+        && isOptionalNonEmptyString(step.label)
+        && hasOptionalEvidenceLocators(step.evidenceLocators))) {
       return null;
     }
     return value as unknown as SimpleFlowAcquisitionInput;
@@ -160,6 +174,40 @@ function slug(value: string): string {
     .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "");
   return result || "knowledge";
+}
+
+function locatorKey(locator: KnowledgeEvidenceLocator): string {
+  return `${locator.filePath}\u0000${locator.lineStart}\u0000${locator.lineEnd ?? locator.lineStart}`;
+}
+
+function flowEvidenceCapture(input: SimpleFlowAcquisitionInput): {
+  captureLocators: KnowledgeEvidenceLocator[];
+  flowIndexes: number[];
+  stepIndexes: Array<number[] | undefined>;
+  hasExplicitStepEvidence: boolean;
+} {
+  const captureLocators: KnowledgeEvidenceLocator[] = [];
+  const indexesByLocator = new Map<string, number>();
+  const addLocator = (locator: KnowledgeEvidenceLocator): number => {
+    const key = locatorKey(locator);
+    const existing = indexesByLocator.get(key);
+    if (existing !== undefined) return existing;
+    const index = captureLocators.length;
+    captureLocators.push(locator);
+    indexesByLocator.set(key, index);
+    return index;
+  };
+
+  const flowIndexes = [...new Set(input.evidenceLocators.map(addLocator))];
+
+  let hasExplicitStepEvidence = false;
+  const stepIndexes = input.steps.map((step) => {
+    if (step.evidenceLocators === undefined) return undefined;
+    hasExplicitStepEvidence = true;
+    return [...new Set(step.evidenceLocators.map(addLocator))];
+  });
+
+  return { captureLocators, flowIndexes, stepIndexes, hasExplicitStepEvidence };
 }
 
 function existingEntityId(records: readonly KnowledgeRecord[], name: string): string | null {
@@ -226,10 +274,22 @@ export function buildSimpleAcquisitionProposal(
   const participants = new Map<string, NativeKnowledgeCandidate>();
 
   if (input.type === "flow") {
-    const steps = input.steps.map((step) => ({
-      entityId: participantId(existingRecords, participants, step.entity, input.evidenceLocators),
-      ...(step.label === undefined ? {} : { label: step.label }),
-    }));
+    const flowEvidence = flowEvidenceCapture(input);
+    const steps = input.steps.map((step, index) => {
+      const explicitIndexes = flowEvidence.stepIndexes[index];
+      const evidenceAnchorIndexes = explicitIndexes
+        ?? (flowEvidence.hasExplicitStepEvidence ? flowEvidence.flowIndexes : undefined);
+      return {
+        entityId: participantId(
+          existingRecords,
+          participants,
+          step.entity,
+          step.evidenceLocators ?? input.evidenceLocators,
+        ),
+        ...(step.label === undefined ? {} : { label: step.label }),
+        ...(evidenceAnchorIndexes === undefined ? {} : { evidenceAnchorIndexes }),
+      };
+    });
     const flowKind = (input.flowKind ?? "flow").trim();
     return {
       candidates: [
@@ -245,6 +305,9 @@ export function buildSimpleAcquisitionProposal(
             steps,
           },
           evidenceLocators: input.evidenceLocators,
+          ...(flowEvidence.hasExplicitStepEvidence
+            ? { evidenceCaptureLocators: flowEvidence.captureLocators }
+            : {}),
         },
       ],
     };

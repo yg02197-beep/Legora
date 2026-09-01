@@ -95,24 +95,33 @@ function computeFactConfidence(
   return "CONFIRMED";
 }
 
+function evidenceLocationKey(anchor: { filePath: string; lineStart: number; lineEnd?: number }): string {
+  return `${anchor.filePath}\u0000${anchor.lineStart}\u0000${anchor.lineEnd ?? anchor.lineStart}`;
+}
+
+function formatEvidenceLocation(anchor: { filePath: string; lineStart: number; lineEnd?: number }): string {
+  return anchor.lineEnd
+    ? `${anchor.filePath}:${anchor.lineStart}-${anchor.lineEnd}`
+    : `${anchor.filePath}:${anchor.lineStart}`;
+}
+
 function formatFactFilePaths(
   fact: BehaviorFact,
   claimsById: Map<string, EvidenceClaim>,
 ): string {
-  const anchors: string[] = [];
+  const anchors = new Map<string, string>();
   for (const claimId of fact.requiredEvidenceClaimIds) {
     const claim = claimsById.get(claimId);
     if (!claim) continue;
     for (const anchor of claim.evidence) {
-      const loc = anchor.lineEnd
-        ? `${anchor.filePath}:${anchor.lineStart}-${anchor.lineEnd}`
-        : `${anchor.filePath}:${anchor.lineStart}`;
-      anchors.push(loc);
+      const key = evidenceLocationKey(anchor);
+      if (!anchors.has(key)) anchors.set(key, formatEvidenceLocation(anchor));
     }
   }
-  if (anchors.length === 0) return "";
-  if (anchors.length === 1) return anchors[0];
-  return `${anchors[0]} +${anchors.length - 1}`;
+  const locations = [...anchors.values()];
+  if (locations.length === 0) return "";
+  if (locations.length === 1) return locations[0];
+  return `${locations[0]} +${locations.length - 1}`;
 }
 
 function renderFactLine(
@@ -169,10 +178,20 @@ function renderReadyStatus(result: LegoraEntryResult): string {
     lines.push("");
   }
 
-  const totalAnchors = result.freshness.reduce((sum, f) => sum + f.result.checkedAnchors, 0);
+  const recordAnchorChecks = result.freshness.reduce((sum, f) => sum + f.result.checkedAnchors, 0);
+  const checkedRecordIds = new Set(result.freshness.map((f) => f.recordId));
+  const uniqueAnchorKeys = new Set<string>();
+  for (const claim of result.evidenceClaims) {
+    if (!checkedRecordIds.has(claim.providerObjectId)) continue;
+    for (const anchor of claim.evidence) uniqueAnchorKeys.add(evidenceLocationKey(anchor));
+  }
+  const uniqueAnchors = uniqueAnchorKeys.size;
   const allCurrent = result.freshness.every((f) => f.result.status === "CURRENT");
+  const anchorSummary = uniqueAnchors === recordAnchorChecks
+    ? `${uniqueAnchors} unique anchors checked`
+    : `${uniqueAnchors} unique anchors checked (${recordAnchorChecks} record-anchor checks)`;
   lines.push("  \u2500\u2500\u2500 Evidence \u2500\u2500\u2500");
-  lines.push(`  ${totalAnchors} anchors checked, ${allCurrent ? "all CURRENT" : "some issues found"}`);
+  lines.push(`  ${anchorSummary}, ${allCurrent ? "all CURRENT" : "some issues found"}`);
 
   return `${lines.join("\n")}\n`;
 }

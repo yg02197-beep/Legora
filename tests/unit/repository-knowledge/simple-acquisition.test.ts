@@ -6,6 +6,7 @@ import path from "node:path";
 
 import {
   acquireSimpleRepositoryKnowledge,
+  buildSimpleAcquisitionProposal,
   type SimpleKnowledgeAcquisitionInput,
 } from "../../../src/repository-knowledge/simple-acquisition.ts";
 import { readKnowledgeRecords, writeKnowledgeRecord } from "../../../src/repository-knowledge/store.ts";
@@ -134,4 +135,87 @@ test("simple flow reuses an existing entity identity by semantic name", async ()
   if (flow?.structure?.type !== "BEHAVIOR_FLOW") return;
   assert.equal(flow.structure.steps[0]?.entityId, "native:entity:primary-download-existing");
   assert.equal(records.filter((record) => record.structure?.type === "ENTITY").length, 2);
+});
+
+test("simple flow keeps step evidence separate from flow evidence", () => {
+  const input = {
+    type: "flow",
+    subject: "Report generation",
+    evidenceLocators: [{ filePath: "src/report.ts", lineStart: 1, lineEnd: 10 }],
+    steps: [
+      {
+        entity: "Apply corrections",
+        label: "Apply reviewed corrections",
+        evidenceLocators: [{ filePath: "src/report.ts", lineStart: 20, lineEnd: 30 }],
+      },
+      {
+        entity: "Publish report",
+        label: "Publish report",
+        evidenceLocators: [{ filePath: "src/publish.ts", lineStart: 40, lineEnd: 50 }],
+      },
+    ],
+  } as unknown as SimpleKnowledgeAcquisitionInput;
+
+  const proposal = buildSimpleAcquisitionProposal(input, []);
+  const correction = proposal.candidates.find((candidate) => candidate.id === "native:entity:apply-corrections");
+  const publication = proposal.candidates.find((candidate) => candidate.id === "native:entity:publish-report");
+  const flow = proposal.candidates.find((candidate) => candidate.id === "native:flow:report-generation");
+
+  assert.deepEqual(correction?.evidenceLocators, [
+    { filePath: "src/report.ts", lineStart: 20, lineEnd: 30 },
+  ]);
+  assert.deepEqual(publication?.evidenceLocators, [
+    { filePath: "src/publish.ts", lineStart: 40, lineEnd: 50 },
+  ]);
+  assert.deepEqual(flow?.evidenceLocators, [
+    { filePath: "src/report.ts", lineStart: 1, lineEnd: 10 },
+  ]);
+});
+
+test("simple flow records step evidence indexes against one capture surface", () => {
+  const input = {
+    type: "flow",
+    subject: "Report generation",
+    evidenceLocators: [{ filePath: "src/report.ts", lineStart: 1, lineEnd: 10 }],
+    steps: [
+      {
+        entity: "Apply corrections",
+        label: "Apply reviewed corrections",
+        evidenceLocators: [{ filePath: "src/report.ts", lineStart: 20, lineEnd: 30 }],
+      },
+      {
+        entity: "Publish report",
+        label: "Publish report",
+        evidenceLocators: [{ filePath: "src/publish.ts", lineStart: 40, lineEnd: 50 }],
+      },
+    ],
+  } as unknown as SimpleKnowledgeAcquisitionInput;
+
+  const proposal = buildSimpleAcquisitionProposal(input, []);
+  const flow = proposal.candidates.find((candidate) => candidate.id === "native:flow:report-generation") as
+    | (typeof proposal.candidates[number] & { evidenceCaptureLocators?: unknown })
+    | undefined;
+
+  assert.deepEqual(flow?.evidenceCaptureLocators, [
+    { filePath: "src/report.ts", lineStart: 1, lineEnd: 10 },
+    { filePath: "src/report.ts", lineStart: 20, lineEnd: 30 },
+    { filePath: "src/publish.ts", lineStart: 40, lineEnd: 50 },
+  ]);
+  assert.deepEqual(flow?.structure, {
+    type: "BEHAVIOR_FLOW",
+    flowKind: "flow",
+    name: "Report generation",
+    steps: [
+      {
+        entityId: "native:entity:apply-corrections",
+        label: "Apply reviewed corrections",
+        evidenceAnchorIndexes: [1],
+      },
+      {
+        entityId: "native:entity:publish-report",
+        label: "Publish report",
+        evidenceAnchorIndexes: [2],
+      },
+    ],
+  });
 });
