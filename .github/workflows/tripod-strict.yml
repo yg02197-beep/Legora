@@ -1,0 +1,30 @@
+name: Tripod Strict Model
+on:
+  push:
+    branches: [spike/tripod-validation]
+    paths:
+      - 'tools/tripod_strict_model.py'
+      - '.github/workflows/tripod-strict.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  strict:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --upgrade pip pandas numpy
+      - run: python -m py_compile tools/tripod_strict_model.py
+      - run: |
+          mkdir -p tripod_strict_results
+          set -o pipefail
+          python tools/tripod_strict_model.py | tee tripod_strict_results/console.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tripod-strict-results
+          path: tripod_strict_results/
+          retention-days: 7
