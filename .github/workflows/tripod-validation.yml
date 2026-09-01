@@ -1,0 +1,39 @@
+name: Tripod Validation Spike
+
+on:
+  push:
+    branches:
+      - spike/tripod-validation
+    paths:
+      - 'tools/tripod_remote_validation.py'
+      - 'tools/run_tripod_validation.py'
+      - '.github/workflows/tripod-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas numpy
+      - name: Compile validation code
+        run: python -m py_compile tools/tripod_remote_validation.py tools/run_tripod_validation.py
+      - name: Run independent validation
+        run: python tools/run_tripod_validation.py | tee tripod_results/console.log
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tripod-validation-results
+          path: tripod_results/
+          if-no-files-found: warn
+          retention-days: 7
