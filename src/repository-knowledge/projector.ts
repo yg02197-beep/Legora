@@ -178,7 +178,9 @@ export function projectKnowledgeBehaviorSlice(
     const entity = stepEntities[index]!;
     const structure = entity.structure as KnowledgeEntityStructure;
     const entityClaims = claimsFor(entity);
+    const explicitStepClaims = claimsForExplicitFlowStep(flow.id, flowClaims, step.evidenceAnchorIndexes);
     addClaims(entityClaims);
+    if (explicitStepClaims) addClaims(explicitStepClaims);
 
     let category: BehaviorFactCategory | null = null;
     let destination: BehaviorFact[] | null = null;
@@ -202,18 +204,16 @@ export function projectKnowledgeBehaviorSlice(
     }
 
     if (step.label) {
-      const stepClaims = claimsForExplicitFlowStep(flow.id, flowClaims, step.evidenceAnchorIndexes);
-      if (stepClaims) addClaims(stepClaims);
       appendUniqueFact(behaviorSlice.flows, makeFact(
         "flows",
         step.label,
         [flow.id, entity.id],
-        stepClaims === null
+        explicitStepClaims === null
           ? unique([
               ...flowClaims.map((claim) => claim.id),
               ...entityClaims.map((claim) => claim.id),
             ])
-          : unique(stepClaims.map((claim) => claim.id)),
+          : unique(explicitStepClaims.map((claim) => claim.id)),
       ));
     }
   });
