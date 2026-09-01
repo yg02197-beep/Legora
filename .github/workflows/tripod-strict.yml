@@ -4,6 +4,7 @@ on:
     branches: [spike/tripod-validation]
     paths:
       - 'tools/tripod_strict_model.py'
+      - 'tools/run_tripod_strict.py'
       - '.github/workflows/tripod-strict.yml'
   workflow_dispatch:
 permissions:
@@ -17,11 +18,11 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: python -m pip install --upgrade pip pandas numpy
-      - run: python -m py_compile tools/tripod_strict_model.py
+      - run: python -m py_compile tools/tripod_strict_model.py tools/run_tripod_strict.py
       - run: |
           mkdir -p tripod_strict_results
           set -o pipefail
-          python tools/tripod_strict_model.py | tee tripod_strict_results/console.log
+          python tools/run_tripod_strict.py | tee tripod_strict_results/console.log
       - if: always()
         uses: actions/upload-artifact@v4
         with:
